@@ -58,62 +58,26 @@ def plot_histograms(df, hybrid, type, savefile):
     else:
         df_temp = df[(df["Value"] != 0)]
         colors = ["red", "deepskyblue", "green", "darkviolet"]
-    
-    max = df_temp["Value"].max()
 
     graph = sns.FacetGrid(df_temp, col="Pulse", row="Sex", hue="Ancestry", palette=colors)
     graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type).add_legend())
     # graph.set(yscale="log")
-    plt.xlim([0, max])
+    plt.xlim([0, 1])
     graph.savefig(savefile)
 
-def make_bins(df, bins):
-    if df.empty:
-        return np.empty((0, 2), dtype=object)    
-    bin_series = pd.Series(df["Value"].value_counts(bins=bins))
-    new_bins = np.empty((len(bin_series), 2), dtype=object)
-    for i in range(0, len(bin_series)):
-        interval = str(bin_series[bin_series == bin_series.iat[i]].index[0])
-        interval = (interval.split(" ",1)[1])
-        interval = (interval.split("]",1)[0])
-        interval = float(interval)
-        new_bins[i] = (interval, bin_series.iat[i])
-    return new_bins
-
-def plot_lines(df, hybrid, bins, savefile):
-    if hybrid == "no_hybrid":
+def plot_lines(df, hybrid, savefile):
+    if hybrid == "no_hybrid": 
         df_temp = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
         colors = ["red", "deepskyblue", "green"]
-        ancestries = ("EUR", "AFR", "NAT")
     elif hybrid == "only_hybrid":
         df_temp = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
         colors = ["darkviolet"]
-        ancestries = ("HYB",)
     else:
         df_temp = df[(df["Value"] != 0)]
         colors = ["red", "deepskyblue", "green", "darkviolet"]
-        ancestries = ("EUR", "AFR", "NAT", "HYB")
 
-    entries = np.empty((2*5*len(ancestries)*bins, 5), dtype=object)
-    n_entries = 0
-    
-    sexes = ("Female", "Male")
-    for i in range (0, 2):
-        for j in range (1, 6):
-            for k in range (0, len(ancestries)):
-                df_bins = df_temp.loc[(df_temp["Pulse"] == j) & (df_temp["Sex"] == sexes[i]) & (df_temp["Ancestry"] == ancestries[k])]
-                new_bins = make_bins(df_bins, bins)
-                if not (len(new_bins) < 1):
-                    for l in range(0, bins):
-                        new_entry = (sexes[i], j, ancestries[k], new_bins[l][0], new_bins[l][1])
-                        entries[n_entries] = new_entry
-                        n_entries += 1
-
-    
-    df_lines = pd.DataFrame(data = entries, columns=["Sex", "Pulse", "Ancestry", "Value", "Count"])
-
-    graph = sns.FacetGrid(df_lines, col="Pulse", row="Sex", hue="Ancestry", palette=colors)
-    graph = (graph.map_dataframe(sns.lineplot, x="Value", y="Count"))
+    graph = sns.FacetGrid(df_temp, col="Pulse", row="Sex", hue="Ancestry", palette=colors)
+    graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, edgecolor="k", linewidth=0, kde=True).add_legend())
     # graph.set(yscale="log")
     plt.xlim([0, 1])
     graph.savefig(savefile)
@@ -203,30 +167,30 @@ def create_directories():
             os.mkdir(path)
 
 #reading the files containing scenarios for population
-df = pd.read_csv('./data_outputs/output_salvador.txt', delimiter=' ', header=None)
-# df = pd.read_csv('./data_outputs/output-after-filter-genomic-ancestry_salvador.txt', delimiter='\t', header=None, skiprows=1)
+# df = pd.read_csv('./data_outputs/output_salvador.txt', delimiter=' ', header=None)
+df = pd.read_csv('./data_outputs/output-after-filter-genomic-ancestry_salvador.txt', delimiter='\t', header=None, skiprows=1)
 
 #treating the raw data and creating the new dataframe
-df_new = populate_dataframe(df, False)
+df_new = populate_dataframe(df, True)
 del df
 
 create_directories()
 
 plot_histograms(df_new, "with_hybrid", "layer", "./NO_HDR/Standard/histogram.png")
-plot_lines(df_new, "with_hybrid", 20, "./NO_HDR/Standard/line_graph.png")
+plot_lines(df_new, "with_hybrid", "./NO_HDR/Standard/line_graph.png")
 plot_histograms(df_new, "no_hybrid", "layer", "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, "no_hybrid", 20, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+plot_lines(df_new, "no_hybrid", "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
 plot_histograms(df_new, "only_hybrid", "layer", "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, "only_hybrid", 20, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+plot_lines(df_new, "only_hybrid", "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
 #filtering for only 90% of density
 df_new = filter(90, df_new)
 
 plot_histograms(df_new, "with_hybrid", "layer", "./HDR/Standard/histogram.png")
-plot_lines(df_new, "with_hybrid", 20, "./HDR/Standard/line_graph.png")
+plot_lines(df_new, "with_hybrid", "./HDR/Standard/line_graph.png")
 plot_histograms(df_new, "no_hybrid", "layer", "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, "no_hybrid", 20, "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+plot_lines(df_new, "no_hybrid", "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
 plot_histograms(df_new, "only_hybrid", "layer", "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, "only_hybrid", 20, "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+plot_lines(df_new, "only_hybrid", "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
 write_stats(df_new, "./stats.csv")
