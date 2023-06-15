@@ -2,6 +2,8 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
+import math
+import scipy.stats
 import csv
 import os
 
@@ -111,11 +113,34 @@ def filter(percentage, df_unfiltered):
     df_filtered = df_filtered[~df_filtered["Scenario"].isin(scenarios)]
     return df_filtered
 
+# Function to find mode from the continuous data
+def find_mode(df):
+    if df.empty:
+        return 0
+    
+    x,y = sns.histplot(df, x="Value", fill=False, edgecolor="k", linewidth=0, kde=True).get_lines()[0].get_data()
+    # print(np.shape(x), np.shape(y))
+    
+    for it in y:
+        print(it)
+
+    max_prob = 0
+    mode = 0
+
+    # for ind in df.index:
+    #     value = df["Value"][ind]
+    #     prob = scipy.stats.norm(value)
+    #     if prob > max_prob:
+    #         max_prob = prob
+    #         mode = value
+    
+    return mode
+
 def write_stats(df, file_name):
     ancestries = ("EUR", "AFR", "NAT", "HYB")
     sexes = ("Female", "Male")
 
-    header = ["Sex", "Pulse", "Ancestry", "Min", "Mean", "Median", "Max", "Std"]
+    header = ["Sex", "Pulse", "Ancestry", "Min", "Mean", "Median", "Mode", "Max", "Std"]
 
     with open(file_name, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter='\t')
@@ -126,8 +151,9 @@ def write_stats(df, file_name):
                     for k in range (0, 4):
                         df_temp = df.loc[(df["Pulse"] == j) & (df["Sex"] == sexes[i])]
                         anc = df_temp.loc[(df_temp["Ancestry"] == ancestries[k])]
+                        
 
-                        row = [sexes[i], j, ancestries[k], anc["Value"].min(), anc["Value"].mean(), anc["Value"].median(), anc["Value"].max(), anc["Value"].std()]
+                        row = [sexes[i], j, ancestries[k], anc["Value"].min(), anc["Value"].mean(), anc["Value"].median(), find_mode(anc), anc["Value"].max(), anc["Value"].std()]
                         writer.writerow(row)
                     
 def create_directories():
@@ -176,21 +202,23 @@ del df
 
 create_directories()
 
-plot_histograms(df_new, "with_hybrid", "layer", "./NO_HDR/Standard/histogram.png")
-plot_lines(df_new, "with_hybrid", "./NO_HDR/Standard/line_graph.png")
-plot_histograms(df_new, "no_hybrid", "layer", "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, "no_hybrid", "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
-plot_histograms(df_new, "only_hybrid", "layer", "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, "only_hybrid", "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+# plot_histograms(df_new, "with_hybrid", "layer", "./NO_HDR/Standard/histogram.png")
+# plot_lines(df_new, "with_hybrid", "./NO_HDR/Standard/line_graph.png")
+# plot_histograms(df_new, "no_hybrid", "layer", "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
+# plot_lines(df_new, "no_hybrid", "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+# plot_histograms(df_new, "only_hybrid", "layer", "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
+# plot_lines(df_new, "only_hybrid", "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+
+write_stats(df_new, "./stats_NO_HDR.csv")
 
 #filtering for only 90% of density
 df_new = filter(90, df_new)
 
-plot_histograms(df_new, "with_hybrid", "layer", "./HDR/Standard/histogram.png")
-plot_lines(df_new, "with_hybrid", "./HDR/Standard/line_graph.png")
-plot_histograms(df_new, "no_hybrid", "layer", "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, "no_hybrid", "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
-plot_histograms(df_new, "only_hybrid", "layer", "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, "only_hybrid", "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+# plot_histograms(df_new, "with_hybrid", "layer", "./HDR/Standard/histogram.png")
+# plot_lines(df_new, "with_hybrid", "./HDR/Standard/line_graph.png")
+# plot_histograms(df_new, "no_hybrid", "layer", "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
+# plot_lines(df_new, "no_hybrid", "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+# plot_histograms(df_new, "only_hybrid", "layer", "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
+# plot_lines(df_new, "only_hybrid", "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
-write_stats(df_new, "./stats.csv")
+write_stats(df_new, "./stats_HDR.csv")
