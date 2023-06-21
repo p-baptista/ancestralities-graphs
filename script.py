@@ -17,35 +17,55 @@ def populate_dataframe(df_raw, first_column_scenario):
     entries = np.empty((length, 5), dtype=object)
     n_entries=0
 
-    #populating new dataframe
-    for i in range (df_raw.shape[0]):
-        if first_column_scenario == True: j = 1
-        else: j = 0
-        for j in range (j, df_raw.shape[1]):
-            #assigning gender to new row
-            if j < (df_raw.shape[1])/2: sex = "Female"
-            else: sex = "Male"
+    if (first_column_scenario):
+        #populating new dataframe
+        for i in range (df_raw.shape[0]):
+            for j in range (1, df_raw.shape[1]):
+                #assigning gender to new row
+                if j < (df_raw.shape[1])/2: sex = "Female"
+                else: sex = "Male"
 
-            #assigning scenario
-            if first_column_scenario == True: scenario = int(df_raw.iloc[i][0])
-            else: scenario = i+1
-            
-            #assigning pulse
-            if first_column_scenario == True: pulse = int(((np.floor((j-1)/NUMBER_ANCESTRY))%5)+1)
-            else: pulse = int(((np.floor(j/NUMBER_ANCESTRY))%5)+1)
+                #assigning scenario
+                scenario = int(df_raw.iloc[i][0])
+                
+                #assigning pulse
+                pulse = int(((np.floor((j-1)/NUMBER_ANCESTRY))%5)+1)
 
-            #assigning ancestry
-            ancestries = ("EUR", "AFR", "NAT", "HYB")
-            if first_column_scenario == True: ancestry = ancestries[((j-1)%4)]
-            else: ancestry = ancestries[((j)%4)]
+                #assigning ancestry
+                ancestries = ("EUR", "AFR", "NAT", "HYB")
+                ancestry = ancestries[((j-1)%4)]
 
-            #assigning value of ancestry
-            value = float(df_raw.iloc[i][j])
+                #assigning value of ancestry
+                value = float(df_raw.iloc[i][j])
 
-            new_entry = (scenario, sex, pulse, ancestry, value)
-            entries[n_entries] = new_entry
-            n_entries += 1
+                new_entry = (scenario, sex, pulse, ancestry, value)
+                entries[n_entries] = new_entry
+                n_entries += 1
+    else:
+        #populating new dataframe
+        for i in range (df_raw.shape[0]):
+            for j in range (0, df_raw.shape[1]):
+                #assigning gender to new row
+                sex = "Male"
 
+                #assigning scenario
+                scenario = i+1
+                
+                #assigning pulse
+                pulse = int(((np.floor(j/NUMBER_ANCESTRY))%5)+1)
+
+                #assigning ancestry
+                ancestries = ("EUR", "AFR", "NAT", "HYB")
+                ancestry = ancestries[((j)%4)]
+
+                #assigning value of ancestry
+                value = float(df_raw.iloc[i][j])
+
+                new_entry = (scenario, sex, pulse, ancestry, value)
+                entries[n_entries] = new_entry
+                n_entries += 1
+
+    
     df_new = pd.DataFrame(data = entries, columns=["Scenario", "Sex", "Pulse", "Ancestry", "Value"])
     return df_new
 
@@ -63,6 +83,53 @@ def plot_histograms(df, hybrid, type, savefile):
 
     graph = sns.FacetGrid(df_temp, col="Pulse", row="Sex", hue="Ancestry", palette=colors)
     graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
+    # graph.set(yscale="log")
+    plt.xlim([0, 1])
+    graph.savefig(savefile)
+
+#plots graphs for each pulse, separated by sex
+def plot_histograms_diff(df, hybrid, type, percentage, savefile):
+    sexes = ("Female", "Male")
+    if hybrid == "no_hybrid": 
+        ancestries = ("EUR", "AFR", "NAT")
+        df_temp = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
+        colours = ["red", "deepskyblue", "green"]
+    elif hybrid == "only_hybrid":
+        ancestries = ("HYB")
+        df_temp = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
+        colours = ["darkviolet"]
+    else:
+        ancestries = ("EUR", "AFR", "NAT", "HYB")
+        df_temp = df[(df["Value"] != 0)]
+        colours = ["red", "deepskyblue", "green", "darkviolet"]
+
+    graph = sns.FacetGrid(df_temp, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
+    graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
+
+    axesFemale = graph.axes[0]
+    axesMale = graph.axes[1]
+    
+    for j in range (1, NUMBER_PULSES+1):
+            for anc in range (0, len(ancestries)):
+                df_temp = df.loc[(df["Pulse"] == j) & (df["Sex"] == "Female") & (df_temp["Ancestry"] == ancestries[anc])]
+                if df_temp.empty:
+                    continue
+                #drawing quantile bounds in graph
+                lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
+                upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
+                plt.axvline(ax=axesMale[j-1], x=lower_quantile, colors=colours[anc], ls='--')
+                plt.axvline(ax=axesMale[j-1], x=upper_quantile, colors=colours[anc], ls='--')
+
+    for j in range (1, NUMBER_PULSES+1):
+            for anc in range (0, len(ancestries)):
+                df_temp = df.loc[(df["Pulse"] == j) & (df["Sex"] == "Female") & (df_temp["Ancestry"] == ancestries[anc])]
+                if df_temp.empty:
+                    continue
+                #drawing quantile bounds in graph
+                lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
+                upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
+                plt.axvline(ax=axesMale[j-1], x=lower_quantile, colors=colours[anc], ls='--')
+                plt.axvline(ax=axesMale[j-1], x=upper_quantile, colors=colours[anc], ls='--')
     # graph.set(yscale="log")
     plt.xlim([0, 1])
     graph.savefig(savefile)
@@ -152,7 +219,6 @@ def filter_ci(percentage, df_unfiltered):
     df_filtered = df_filtered[~df_filtered["Scenario"].isin(scenarios)]
     # print(df_filtered.head(10))
     return df_filtered
-
 
 # Function to find mode from the continuous data
 def find_mode(df):
@@ -251,17 +317,17 @@ del df
 
 create_directories()
 
-# plot_histograms(df_new, "with_hybrid", "layer", "./NO_HDR/Standard/histogram.png")
-# plot_lines(df_new, "with_hybrid", "./NO_HDR/Standard/line_graph.png")
-# plot_histograms(df_new, "no_hybrid", "layer", "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
-# plot_lines(df_new, "no_hybrid", "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
-# plot_histograms(df_new, "only_hybrid", "layer", "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
-# plot_lines(df_new, "only_hybrid", "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+plot_histograms_diff(df_new, "with_hybrid", "layer", 90, "./NO_HDR/Standard/histogram.png")
+plot_lines(df_new, "with_hybrid", "./NO_HDR/Standard/line_graph.png")
+plot_histograms_diff(df_new, "no_hybrid", "layer", 90, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
+plot_lines(df_new, "no_hybrid", "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+plot_histograms_diff(df_new, "only_hybrid", "layer", 90, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
+plot_lines(df_new, "only_hybrid", "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
 write_stats(df_new, "./stats_NO_HDR.csv")
 
 #filtering for only 90% of density
-df_new = filter_ci(90, df_new)
+# df_new = filter(90, df_new)
 
 # plot_histograms(df_new, "with_hybrid", "layer", "./HDR/Standard/histogram.png")
 # plot_lines(df_new, "with_hybrid", "./HDR/Standard/line_graph.png")
@@ -270,4 +336,4 @@ df_new = filter_ci(90, df_new)
 # plot_histograms(df_new, "only_hybrid", "layer", "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
 # plot_lines(df_new, "only_hybrid", "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
-write_stats(df_new, "./stats_HDR.csv")
+# write_stats(df_new, "./stats_HDR.csv")
