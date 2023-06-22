@@ -92,62 +92,75 @@ def plot_histograms_diff(df, hybrid, type, percentage, savefile):
     sexes = ("Female", "Male")
     if hybrid == "no_hybrid": 
         ancestries = ("EUR", "AFR", "NAT")
-        df_temp = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
+        df_hist = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
         colours = ["red", "deepskyblue", "green"]
     elif hybrid == "only_hybrid":
-        ancestries = ("HYB")
-        df_temp = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
+        ancestries = ("HYB", )
+        df_hist = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
         colours = ["darkviolet"]
     else:
         ancestries = ("EUR", "AFR", "NAT", "HYB")
-        df_temp = df[(df["Value"] != 0)]
+        df_hist = df[(df["Value"] != 0)]
         colours = ["red", "deepskyblue", "green", "darkviolet"]
 
-    graph = sns.FacetGrid(df_temp, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
+    graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
-
-    axesFemale = graph.axes[0]
-    axesMale = graph.axes[1]
     
-    for j in range (1, NUMBER_PULSES+1):
-            for anc in range (0, len(ancestries)):
-                df_temp = df.loc[(df["Pulse"] == j) & (df["Sex"] == "Female") & (df_temp["Ancestry"] == ancestries[anc])]
-                if df_temp.empty:
-                    continue
-                #drawing quantile bounds in graph
-                lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
-                upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
-                plt.axvline(ax=axesMale[j-1], x=lower_quantile, colors=colours[anc], ls='--')
-                plt.axvline(ax=axesMale[j-1], x=upper_quantile, colors=colours[anc], ls='--')
-
-    for j in range (1, NUMBER_PULSES+1):
-            for anc in range (0, len(ancestries)):
-                df_temp = df.loc[(df["Pulse"] == j) & (df["Sex"] == "Female") & (df_temp["Ancestry"] == ancestries[anc])]
-                if df_temp.empty:
-                    continue
-                #drawing quantile bounds in graph
-                lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
-                upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
-                plt.axvline(ax=axesMale[j-1], x=lower_quantile, colors=colours[anc], ls='--')
-                plt.axvline(ax=axesMale[j-1], x=upper_quantile, colors=colours[anc], ls='--')
+    for i in range(0, 2):
+        axes = graph.axes[i]
+        for j in range (0, len(axes)):
+                for anc in range (0, len(ancestries)):
+                    if hybrid == "only_hybrid": pulse = j+2
+                    else: pulse = j+1
+                    df_temp = df_hist.loc[(df_hist["Pulse"] == pulse) & (df_hist["Sex"] == sexes[i]) & (df_hist["Ancestry"] == ancestries[anc])]
+                    if df_temp.empty:
+                        continue
+                    #drawing quantile bounds in graph
+                    lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
+                    upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
+                    axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8, label='05%')
+                    axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8, label='90%')
     # graph.set(yscale="log")
     plt.xlim([0, 1])
     graph.savefig(savefile)
 
-def plot_lines(df, hybrid, savefile):
+def plot_lines(df, hybrid, percentage, savefile):
+    sexes = ("Female", "Male")
     if hybrid == "no_hybrid": 
-        df_temp = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
-        colors = ["red", "deepskyblue", "green"]
+        ancestries = ("EUR", "AFR", "NAT")
+        df_hist = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
+        colours = ["red", "deepskyblue", "green"]
     elif hybrid == "only_hybrid":
-        df_temp = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
-        colors = ["darkviolet"]
+        ancestries = ("HYB", )
+        df_hist = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
+        colours = ["darkviolet"]
     else:
-        df_temp = df[(df["Value"] != 0)]
-        colors = ["red", "deepskyblue", "green", "darkviolet"]
+        ancestries = ("EUR", "AFR", "NAT", "HYB")
+        df_hist = df[(df["Value"] != 0)]
+        colours = ["red", "deepskyblue", "green", "darkviolet"]
 
-    graph = sns.FacetGrid(df_temp, col="Pulse", row="Sex", hue="Ancestry", palette=colors)
+    graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, linewidth=0, kde=True, stat='probability').add_legend())
-    # graph.set(yscale="log")
+
+    graph._x_var
+
+    for i in range(0, 2):
+        axes = graph.axes[i]
+        for j in range (0, len(axes)):
+                for anc in range (0, len(ancestries)):
+                    if hybrid == "only_hybrid": pulse = j+2
+                    else: pulse = j+1
+                    df_temp = df_hist.loc[(df_hist["Pulse"] == pulse) & (df_hist["Sex"] == sexes[i]) & (df_hist["Ancestry"] == ancestries[anc])]
+                    if df_temp.empty:
+                        continue
+                    #drawing quantile bounds in graph
+                    lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
+                    upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
+                    axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
+                    axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
+                    # axes[j].text(lower_quantile-0.1, (axes[j].get_ylim()[1]-0.01), "5%")
+                    # axes[j].text(upper_quantile+0.1, (axes[j].get_ylim()[1]-0.01), "90%")
+
     plt.xlim([0, 1])
     graph.savefig(savefile)
 
@@ -318,11 +331,11 @@ del df
 create_directories()
 
 plot_histograms_diff(df_new, "with_hybrid", "layer", 90, "./NO_HDR/Standard/histogram.png")
-plot_lines(df_new, "with_hybrid", "./NO_HDR/Standard/line_graph.png")
+plot_lines(df_new, "with_hybrid", 90, "./NO_HDR/Standard/line_graph.png")
 plot_histograms_diff(df_new, "no_hybrid", "layer", 90, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, "no_hybrid", "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+plot_lines(df_new, "no_hybrid", 90, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
 plot_histograms_diff(df_new, "only_hybrid", "layer", 90, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, "only_hybrid", "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+plot_lines(df_new, "only_hybrid", 90, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
 write_stats(df_new, "./stats_NO_HDR.csv")
 
