@@ -70,38 +70,17 @@ def populate_dataframe(df_raw, first_column_scenario):
     return df_new
 
 #plots graphs for each pulse, separated by sex
-def plot_histograms(df, hybrid, type, savefile):
-    if hybrid == "no_hybrid": 
-        df_temp = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
-        colors = ["red", "deepskyblue", "green"]
-    elif hybrid == "only_hybrid":
-        df_temp = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
-        colors = ["darkviolet"]
-    else:
-        df_temp = df[(df["Value"] != 0)]
-        colors = ["red", "deepskyblue", "green", "darkviolet"]
-
-    graph = sns.FacetGrid(df_temp, col="Pulse", row="Sex", hue="Ancestry", palette=colors)
-    graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
-    # graph.set(yscale="log")
-    plt.xlim([0, 1])
-    graph.savefig(savefile)
-
-#plots graphs for each pulse, separated by sex
-def plot_histograms_diff(df, hybrid, type, percentage, savefile):
+def plot_histograms(df, ancestries, type, percentage, savefile):
     sexes = ("Female", "Male")
-    if hybrid == "no_hybrid": 
-        ancestries = ("EUR", "AFR", "NAT")
-        df_hist = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
-        colours = ["red", "deepskyblue", "green"]
-    elif hybrid == "only_hybrid":
-        ancestries = ("HYB", )
-        df_hist = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
-        colours = ["darkviolet"]
-    else:
-        ancestries = ("EUR", "AFR", "NAT", "HYB")
-        df_hist = df[(df["Value"] != 0)]
-        colours = ["red", "deepskyblue", "green", "darkviolet"]
+    colours = list()
+
+    for anc in ancestries:
+        if anc == "EUR": colours.append("red")
+        elif anc == "AFR": colours.append("deepskyblue")
+        elif anc == "NAT": colours.append("green")
+        elif anc == "HYB": colours.append("darkviolet")
+
+    df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
     graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
@@ -110,7 +89,7 @@ def plot_histograms_diff(df, hybrid, type, percentage, savefile):
         axes = graph.axes[i]
         for j in range (0, len(axes)):
                 for anc in range (0, len(ancestries)):
-                    if hybrid == "only_hybrid": pulse = j+2
+                    if (len(ancestries) == 1 and ancestries[0] == "HYB"): pulse = j+2
                     else: pulse = j+1
                     df_temp = df_hist.loc[(df_hist["Pulse"] == pulse) & (df_hist["Sex"] == sexes[i]) & (df_hist["Ancestry"] == ancestries[anc])]
                     if df_temp.empty:
@@ -120,35 +99,29 @@ def plot_histograms_diff(df, hybrid, type, percentage, savefile):
                     upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
                     axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8, label='05%')
                     axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8, label='90%')
-    # graph.set(yscale="log")
     plt.xlim([0, 1])
     graph.savefig(savefile)
 
-def plot_lines(df, hybrid, percentage, savefile):
+def plot_lines(df, ancestries, percentage, savefile):
     sexes = ("Female", "Male")
-    if hybrid == "no_hybrid": 
-        ancestries = ("EUR", "AFR", "NAT")
-        df_hist = df[(df["Ancestry"] != "HYB") & (df["Value"] != 0)]
-        colours = ["red", "deepskyblue", "green"]
-    elif hybrid == "only_hybrid":
-        ancestries = ("HYB", )
-        df_hist = df[(df["Ancestry"] == "HYB") & (df["Value"] != 0)]
-        colours = ["darkviolet"]
-    else:
-        ancestries = ("EUR", "AFR", "NAT", "HYB")
-        df_hist = df[(df["Value"] != 0)]
-        colours = ["red", "deepskyblue", "green", "darkviolet"]
+    colours = list()
+
+    for anc in ancestries:
+        if anc == "EUR": colours.append("red")
+        elif anc == "AFR": colours.append("deepskyblue")
+        elif anc == "NAT": colours.append("green")
+        elif anc == "HYB": colours.append("darkviolet")
+
+    df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
     graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, linewidth=0, kde=True, stat='probability').add_legend())
-
-    graph._x_var
 
     for i in range(0, 2):
         axes = graph.axes[i]
         for j in range (0, len(axes)):
                 for anc in range (0, len(ancestries)):
-                    if hybrid == "only_hybrid": pulse = j+2
+                    if (len(ancestries) == 1 and ancestries[0] == "HYB"): pulse = j+2
                     else: pulse = j+1
                     df_temp = df_hist.loc[(df_hist["Pulse"] == pulse) & (df_hist["Sex"] == sexes[i]) & (df_hist["Ancestry"] == ancestries[anc])]
                     if df_temp.empty:
@@ -330,12 +303,18 @@ del df
 
 create_directories()
 
-plot_histograms_diff(df_new, "with_hybrid", "layer", 90, "./NO_HDR/Standard/histogram.png")
-plot_lines(df_new, "with_hybrid", 90, "./NO_HDR/Standard/line_graph.png")
-plot_histograms_diff(df_new, "no_hybrid", "layer", 90, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, "no_hybrid", 90, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
-plot_histograms_diff(df_new, "only_hybrid", "layer", 90, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, "only_hybrid", 90, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+ancestries = ["EUR", "AFR", "NAT", "HYB"]
+
+plot_histograms(df_new, ancestries, "layer", 90, "./NO_HDR/Standard/histogram.png")
+plot_lines(df_new, ancestries, 90, "./NO_HDR/Standard/line_graph.png")
+
+ancestries = ["EUR", "AFR", "NAT"]
+plot_histograms(df_new, ancestries, "layer", 90, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
+plot_lines(df_new, ancestries, 90, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+
+ancestries = ["HYB",]
+plot_histograms(df_new, ancestries, "layer", 90, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
+plot_lines(df_new, ancestries, 90, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
 write_stats(df_new, "./stats_NO_HDR.csv")
 
