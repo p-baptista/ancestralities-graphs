@@ -85,6 +85,7 @@ def plot_histograms(df, ancestries, type, percentage, savefile):
     graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
     
+    #draw lines in graphs
     for i in range(0, 2):
         axes = graph.axes[i]
         for j in range (0, len(axes)):
@@ -97,8 +98,13 @@ def plot_histograms(df, ancestries, type, percentage, savefile):
                     #drawing quantile bounds in graph
                     lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
                     upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
-                    axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8, label='05%')
-                    axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8, label='90%')
+                    
+                    #quantile bounds lines
+                    axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
+                    axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
+                    
+                    #mode line
+                    axes[j].axvline(x=find_mode(df_temp), color="black", linestyle=':', linewidth=1.2)
     plt.xlim([0, 1])
     graph.savefig(savefile)
 
@@ -117,6 +123,7 @@ def plot_lines(df, ancestries, percentage, savefile):
     graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, linewidth=0, kde=True, stat='probability').add_legend())
 
+    #draw lines in graphs
     for i in range(0, 2):
         axes = graph.axes[i]
         for j in range (0, len(axes)):
@@ -129,10 +136,13 @@ def plot_lines(df, ancestries, percentage, savefile):
                     #drawing quantile bounds in graph
                     lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
                     upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
+
+                    #quantile bounds lines
                     axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
                     axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
-                    # axes[j].text(lower_quantile-0.1, (axes[j].get_ylim()[1]-0.01), "5%")
-                    # axes[j].text(upper_quantile+0.1, (axes[j].get_ylim()[1]-0.01), "90%")
+                    
+                    #mode line
+                    axes[j].axvline(x=find_mode(df_temp), color="black", linestyle=':', linewidth=1.2)
 
     plt.xlim([0, 1])
     graph.savefig(savefile)
@@ -208,34 +218,29 @@ def filter_ci(percentage, df_unfiltered):
 
 # Function to find mode from the continuous data
 def find_mode(df):
-    return 0
     if df.empty:
         return 0
     
-    x,y = sns.histplot(df, x="Value", fill=False, edgecolor="k", linewidth=0, kde=True).get_lines()[0].get_data()
-    # print(np.shape(x), np.shape(y))
-    
-    max_prob = 0
-    mode = 0
-    it = 0
-    for prob in y:
-        it+=1
-        print(prob)
-        if prob > max_prob:
-            max_prob = prob
-    
-    
+    #calculating number of bins using IQR
+    Q1 = np.quantile(df["Value"], 0.25)
+    Q3 = np.quantile(df["Value"], 0.75)
+    IQR = Q3 - Q1
+    cube = np.cbrt(len(df["Value"]))
+    bin_width = 2*IQR/cube
+    if bin_width == 0: return 0
+    n_bins = round(1/bin_width, 0)    
 
-    print(f'Max probability is:', max_prob)
+    hist = np.histogram(df["Value"], bins=int(n_bins))
 
-    # for ind in df.index:
-    #     value = df["Value"][ind]
-    #     prob = scipy.stats.norm(value)
-    #     if prob > max_prob:
-    #         max_prob = prob
-    #         mode = value
-    
-    return mode
+    count_max=0
+    mode=0
+
+    for i in range(len(hist[0])):
+        if hist[0][i] > count_max:
+            count_max = hist[0][i]
+            mode = (hist[1][i] + hist[1][i+1])/2
+
+    return round(mode, 2)
 
 def write_stats(df, file_name):
     ancestries = ("EUR", "AFR", "NAT", "HYB")
@@ -256,7 +261,8 @@ def write_stats(df, file_name):
 
                         row = [sexes[i], j, ancestries[k], anc["Value"].min(), anc["Value"].mean(), anc["Value"].median(), find_mode(anc), anc["Value"].max(), anc["Value"].std()]
                         writer.writerow(row)
-                    
+
+#function creates folders for graphs, if they don't exist yet                    
 def create_directories():
     
     directory = "HDR"
@@ -319,13 +325,19 @@ plot_lines(df_new, ancestries, 90, "./NO_HDR/Hybrid_Separated/only_hybrid_line_g
 write_stats(df_new, "./stats_NO_HDR.csv")
 
 #filtering for only 90% of density
-# df_new = filter(90, df_new)
+df_new = filter(90, df_new)
 
-# plot_histograms(df_new, "with_hybrid", "layer", "./HDR/Standard/histogram.png")
-# plot_lines(df_new, "with_hybrid", "./HDR/Standard/line_graph.png")
-# plot_histograms(df_new, "no_hybrid", "layer", "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
-# plot_lines(df_new, "no_hybrid", "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
-# plot_histograms(df_new, "only_hybrid", "layer", "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
-# plot_lines(df_new, "only_hybrid", "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+ancestries = ["EUR", "AFR", "NAT", "HYB"]
 
-# write_stats(df_new, "./stats_HDR.csv")
+plot_histograms(df_new, ancestries, "layer", 90, "./HDR/Standard/histogram.png")
+plot_lines(df_new, ancestries, 90, "./HDR/Standard/line_graph.png")
+
+ancestries = ["EUR", "AFR", "NAT"]
+plot_histograms(df_new, ancestries, "layer", 90, "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
+plot_lines(df_new, ancestries, 90, "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+
+ancestries = ["HYB",]
+plot_histograms(df_new, ancestries, "layer", 90, "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
+plot_lines(df_new, ancestries, 90, "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+
+write_stats(df_new, "./stats_HDR.csv")
