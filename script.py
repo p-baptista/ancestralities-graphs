@@ -11,6 +11,9 @@ import os
 NUMBER_PULSES = 5
 NUMBER_ANCESTRY = 4
 
+# file_path = './data_outputs/output_salvador.txt'
+file_path = './data_outputs/output-after-filter-genomic-ancestry_salvador.txt'
+
 #creates a new dataframe from raw input dataframe
 def populate_dataframe(df_raw, first_column_scenario):
     length = int(df_raw.shape[0]*(2*NUMBER_PULSES*NUMBER_ANCESTRY))
@@ -69,7 +72,7 @@ def populate_dataframe(df_raw, first_column_scenario):
     df_new = pd.DataFrame(data = entries, columns=["Scenario", "Sex", "Pulse", "Ancestry", "Value"])
     return df_new
 
-#plots graphs for each pulse, separated by sex
+#plots histograms for each pulse, separated by sex
 def plot_histograms(df, ancestries, type, percentage, savefile):
     sexes = ("Female", "Male")
     colours = list()
@@ -176,46 +179,6 @@ def filter(percentage, df_unfiltered):
     df_filtered = df_filtered[~df_filtered["Scenario"].isin(scenarios)]
     return df_filtered
 
-def filter_ci(percentage, df_unfiltered):
-    ancestries = ("EUR", "AFR", "NAT", "HYB")
-    sexes = ("Female", "Male")
-    scenarios = set(())
-    df_filtered = df_unfiltered
-
-    for sex in range(0,2):
-        for pulse in range(1,6):
-            for anc in range(0,4):
-                #selecting only the values from this pulse, sex and ancestry
-                df_temp = df_filtered[(df_filtered["Pulse"] == pulse) & (df_filtered["Sex"] == sexes[sex]) & (df_filtered["Ancestry"] == ancestries[anc])]
-
-                mean_temp = df_temp["Value"].mean()
-                std_temp = df_temp["Value"].std(ddof=0)
-                sqrt_size_temp = np.sqrt(len(df_temp))
-
-                print(f'Pulse', pulse, sexes[sex], ancestries[anc])
-
-                print(f'mean, std and sqrt_size:', mean_temp, std_temp, sqrt_size_temp)
-
-                #calculating confidence interval bounds
-                ci_inf = mean_temp - 1.64*(std_temp/sqrt_size_temp)
-                ci_sup = mean_temp + 1.64*(std_temp/sqrt_size_temp)
-
-                print(ci_inf, ci_sup)
-
-                size = df_temp.shape[0]
-                #avoiding the null stats (HYB percentages in the first pulse)
-                if ci_inf != 0:
-                    #searches for the scenarios that are outside the 90% HDR
-                    for i in range(size):
-                        #if the value is outside the quantiles, we add to the set of scenarios which will be filtered out
-                        if ((df_temp.iloc[i][4] < ci_inf) or (df_temp.iloc[i][4] > ci_sup)):
-                            scenarios.add(df_temp.iloc[i][0])
-
-    #applies the HDR filter
-    df_filtered = df_filtered[~df_filtered["Scenario"].isin(scenarios)]
-    # print(df_filtered.head(10))
-    return df_filtered
-
 # Function to find mode from the continuous data
 def find_mode(df):
     if df.empty:
@@ -246,7 +209,7 @@ def write_stats(df, file_name):
     ancestries = ("EUR", "AFR", "NAT", "HYB")
     sexes = ("Female", "Male")
 
-    header = ["Sex", "Pulse", "Ancestry", "Min", "Mean", "Median", "Mode", "Max", "Std"]
+    header = ["Sex", "Pulse", "Ancestry", "Min", "Mean", "Median", "Max", "Mode", "Std"]
 
     with open(file_name, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter='\t')
@@ -259,7 +222,7 @@ def write_stats(df, file_name):
                         anc = df_temp.loc[(df_temp["Ancestry"] == ancestries[k])]
                         # print(f'Pulse', j, sexes[i], ancestries[k])
 
-                        row = [sexes[i], j, ancestries[k], anc["Value"].min(), anc["Value"].mean(), anc["Value"].median(), find_mode(anc), anc["Value"].max(), anc["Value"].std()]
+                        row = [sexes[i], j, ancestries[k], anc["Value"].min(), anc["Value"].mean(), anc["Value"].median(), anc["Value"].max(), find_mode(anc), anc["Value"].std()]
                         writer.writerow(row)
 
 #function creates folders for graphs, if they don't exist yet                    
@@ -299,18 +262,39 @@ def create_directories():
         if not os.path.exists(path):
             os.mkdir(path)
 
+#identifying the delimiter, if there are rows to skip and if the first column shows the row's scenario
+with open(file_path, 'r') as csvfile:
+    first_line = csvfile.readline()
+    second_line = csvfile.readline()
+    dialect = csv.Sniffer().sniff(csvfile.readline())
+    delimiter = dialect.delimiter
+
+    first_element = first_line.split(delimiter, 1)[0]
+    
+    second_element = second_line.split(delimiter, 1)[0]
+
+    try: 
+        float(first_element)
+        skip_row=0
+    except ValueError:
+        skip_row=1
+    except:
+        print("opa2")
+
+    if (float(second_element) == int(float(second_element))) and (float(second_element) != 0):
+        first_column_scenario=True
+    else: first_column_scenario=False
+
 #reading the files containing scenarios for population
-# df = pd.read_csv('./data_outputs/output_salvador.txt', delimiter=' ', header=None)
-df = pd.read_csv('./data_outputs/output-after-filter-genomic-ancestry_salvador.txt', delimiter='\t', header=None, skiprows=1)
+df = pd.read_csv(file_path, delimiter=delimiter, header=None, skiprows=skip_row)
 
 #treating the raw data and creating the new dataframe
-df_new = populate_dataframe(df, True)
+df_new = populate_dataframe(df, first_column_scenario)
 del df
 
 create_directories()
 
 ancestries = ["EUR", "AFR", "NAT", "HYB"]
-
 plot_histograms(df_new, ancestries, "layer", 90, "./NO_HDR/Standard/histogram.png")
 plot_lines(df_new, ancestries, 90, "./NO_HDR/Standard/line_graph.png")
 
@@ -324,7 +308,7 @@ plot_lines(df_new, ancestries, 90, "./NO_HDR/Hybrid_Separated/only_hybrid_line_g
 
 write_stats(df_new, "./stats_NO_HDR.csv")
 
-#filtering for only 90% of density
+# #filtering for only 90% of density
 df_new = filter(90, df_new)
 
 ancestries = ["EUR", "AFR", "NAT", "HYB"]
