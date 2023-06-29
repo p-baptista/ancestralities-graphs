@@ -2,8 +2,7 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
-import math
-import scipy.stats as st
+import matplotlib.lines as mlines
 import csv
 import os
 
@@ -73,7 +72,7 @@ def populate_dataframe(df_raw, first_column_scenario):
     return df_new
 
 #plots histograms for each pulse, separated by sex
-def plot_histograms(df, ancestries, type, percentage, savefile):
+def plot_histograms(df, ancestries, type, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
@@ -88,30 +87,31 @@ def plot_histograms(df, ancestries, type, percentage, savefile):
     graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
     
-    #draw lines in graphs
-    for i in range(0, 2):
-        axes = graph.axes[i]
-        for j in range (0, len(axes)):
-                for anc in range (0, len(ancestries)):
-                    if (len(ancestries) == 1 and ancestries[0] == "HYB"): pulse = j+2
-                    else: pulse = j+1
-                    df_temp = df_hist.loc[(df_hist["Pulse"] == pulse) & (df_hist["Sex"] == sexes[i]) & (df_hist["Ancestry"] == ancestries[anc])]
-                    if df_temp.empty:
-                        continue
-                    #drawing quantile bounds in graph
-                    lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
-                    upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
-                    
-                    #quantile bounds lines
-                    axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
-                    axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
-                    
-                    #mode line
-                    axes[j].axvline(x=find_mode(df_temp), color="black", linestyle=':', linewidth=1.2)
+    if lines == True:
+        #draw lines in graphs
+        for i in range(0, 2):
+            axes = graph.axes[i]
+            for j in range (0, len(axes)):
+                    for anc in range (0, len(ancestries)):
+                        if (len(ancestries) == 1 and ancestries[0] == "HYB"): pulse = j+2
+                        else: pulse = j+1
+                        df_temp = df_hist.loc[(df_hist["Pulse"] == pulse) & (df_hist["Sex"] == sexes[i]) & (df_hist["Ancestry"] == ancestries[anc])]
+                        if df_temp.empty:
+                            continue
+                        #drawing quantile bounds in graph
+                        lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
+                        upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
+                        
+                        #quantile bounds lines
+                        axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
+                        axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
+                        
+                        #mode line
+                        axes[j].axvline(x=find_mode(df_temp), color="black", linestyle=':', linewidth=1.2)
     plt.xlim([0, 1])
     graph.savefig(savefile)
 
-def plot_lines(df, ancestries, percentage, savefile):
+def plot_lines(df, ancestries, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
@@ -124,30 +124,40 @@ def plot_lines(df, ancestries, percentage, savefile):
     df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
     graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
-    graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, linewidth=0, kde=True, stat='probability').add_legend())
+    graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, linewidth=0, kde=True, stat='probability'))
 
-    #draw lines in graphs
-    for i in range(0, 2):
-        axes = graph.axes[i]
-        for j in range (0, len(axes)):
-                for anc in range (0, len(ancestries)):
-                    if (len(ancestries) == 1 and ancestries[0] == "HYB"): pulse = j+2
-                    else: pulse = j+1
-                    df_temp = df_hist.loc[(df_hist["Pulse"] == pulse) & (df_hist["Sex"] == sexes[i]) & (df_hist["Ancestry"] == ancestries[anc])]
-                    if df_temp.empty:
-                        continue
-                    #drawing quantile bounds in graph
-                    lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
-                    upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
+    if lines == True:
+        #draw lines in graphs
+        for i in range(0, 2):
+            axes = graph.axes[i]
+            for j in range (0, len(axes)):
+                    for anc in range (0, len(ancestries)):
+                        if (len(ancestries) == 1 and ancestries[0] == "HYB"): pulse = j+2
+                        else: pulse = j+1
+                        df_temp = df_hist.loc[(df_hist["Pulse"] == pulse) & (df_hist["Sex"] == sexes[i]) & (df_hist["Ancestry"] == ancestries[anc])]
+                        if df_temp.empty:
+                            continue
+                        #drawing quantile bounds in graph
+                        lower_quantile = np.percentile(df_temp["Value"], ((100-percentage)/2), method="closest_observation")
+                        upper_quantile = np.percentile(df_temp["Value"], (100-((100-percentage)/2)), method="closest_observation")
 
-                    #quantile bounds lines
-                    axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
-                    axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
-                    
-                    #mode line
-                    axes[j].axvline(x=find_mode(df_temp), color="black", linestyle=':', linewidth=1.2)
+                        #quantile bounds lines
+                        axes[j].axvline(x=lower_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
+                        axes[j].axvline(x=upper_quantile, color=colours[anc], linestyle='--', linewidth=0.8)
+                        
+                        #mode line
+                        axes[j].axvline(x=find_mode(df_temp), color="black", linestyle=':', linewidth=1.2)
 
     plt.xlim([0, 1])
+    
+    #drawing the legend for each ancestry
+    legend = list()
+    for anc in range (0, len(ancestries)):
+        legend.append(mlines.Line2D([], [], color=colours[anc], marker='s', ls='', label=ancestries[anc]))
+    graph.figure.legend(handles=legend, loc=7, title="Ancestry", frameon=False)
+    graph.figure.tight_layout()
+    graph.figure.subplots_adjust(right=0.935)
+    
     graph.savefig(savefile)
 
 def filter(percentage, df_unfiltered):
@@ -295,33 +305,33 @@ del df
 create_directories()
 
 ancestries = ["EUR", "AFR", "NAT", "HYB"]
-plot_histograms(df_new, ancestries, "layer", 90, "./NO_HDR/Standard/histogram.png")
-plot_lines(df_new, ancestries, 90, "./NO_HDR/Standard/line_graph.png")
+plot_histograms(df_new, ancestries, "layer", 90, False, "./NO_HDR/Standard/histogram.png")
+plot_lines(df_new, ancestries, 90, False, "./NO_HDR/Standard/line_graph.png")
 
 ancestries = ["EUR", "AFR", "NAT"]
-plot_histograms(df_new, ancestries, "layer", 90, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, ancestries, 90, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+plot_histograms(df_new, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
+plot_lines(df_new, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
 
 ancestries = ["HYB",]
-plot_histograms(df_new, ancestries, "layer", 90, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, ancestries, 90, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+plot_histograms(df_new, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
+plot_lines(df_new, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
 write_stats(df_new, "./stats_NO_HDR.csv")
 
-# #filtering for only 90% of density
+#filtering for only 90% of density
 df_new = filter(90, df_new)
 
 ancestries = ["EUR", "AFR", "NAT", "HYB"]
 
-plot_histograms(df_new, ancestries, "layer", 90, "./HDR/Standard/histogram.png")
-plot_lines(df_new, ancestries, 90, "./HDR/Standard/line_graph.png")
+plot_histograms(df_new, ancestries, "layer", 90, False, "./HDR/Standard/histogram.png")
+plot_lines(df_new, ancestries, 90, False, "./HDR/Standard/line_graph.png")
 
 ancestries = ["EUR", "AFR", "NAT"]
-plot_histograms(df_new, ancestries, "layer", 90, "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, ancestries, 90, "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+plot_histograms(df_new, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
+plot_lines(df_new, ancestries, 90, False, "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
 
 ancestries = ["HYB",]
-plot_histograms(df_new, ancestries, "layer", 90, "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, ancestries, 90, "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+plot_histograms(df_new, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
+plot_lines(df_new, ancestries, 90, False, "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
 write_stats(df_new, "./stats_HDR.csv")
