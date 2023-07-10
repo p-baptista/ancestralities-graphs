@@ -9,69 +9,13 @@ import os
 #declaring "constants"
 NUMBER_PULSES = 5
 NUMBER_ANCESTRY = 4
+ANCESTRY_NAMES = ["EUR", "AFR", "NAT", "HYB"]
 
-# file_path = './data_outputs/output_salvador.txt'
-file_path = './data_outputs/output-after-filter-genomic-ancestry_salvador.txt'
-
-#creates a new dataframe from raw input dataframe
-def populate_dataframe(df_raw, first_column_scenario):
-    length = int(df_raw.shape[0]*(2*NUMBER_PULSES*NUMBER_ANCESTRY))
-    entries = np.empty((length, 5), dtype=object)
-    n_entries=0
-
-    if (first_column_scenario):
-        #populating new dataframe
-        for i in range (df_raw.shape[0]):
-            for j in range (1, df_raw.shape[1]):
-                #assigning gender to new row
-                if j < (df_raw.shape[1])/2: sex = "Female"
-                else: sex = "Male"
-
-                #assigning scenario
-                scenario = int(df_raw.iloc[i][0])
-                
-                #assigning pulse
-                pulse = int(((np.floor((j-1)/NUMBER_ANCESTRY))%5)+1)
-
-                #assigning ancestry
-                ancestries = ("EUR", "AFR", "NAT", "HYB")
-                ancestry = ancestries[((j-1)%4)]
-
-                #assigning value of ancestry
-                value = float(df_raw.iloc[i][j])
-
-                new_entry = (scenario, sex, pulse, ancestry, value)
-                entries[n_entries] = new_entry
-                n_entries += 1
-    else:
-        #populating new dataframe
-        for i in range (df_raw.shape[0]):
-            for j in range (0, df_raw.shape[1]):
-                #assigning gender to new row
-                sex = "Male"
-
-                #assigning scenario
-                scenario = i+1
-                
-                #assigning pulse
-                pulse = int(((np.floor(j/NUMBER_ANCESTRY))%5)+1)
-
-                #assigning ancestry
-                ancestries = ("EUR", "AFR", "NAT", "HYB")
-                ancestry = ancestries[((j)%4)]
-
-                #assigning value of ancestry
-                value = float(df_raw.iloc[i][j])
-
-                new_entry = (scenario, sex, pulse, ancestry, value)
-                entries[n_entries] = new_entry
-                n_entries += 1
-
-    
-    df_new = pd.DataFrame(data = entries, columns=["Scenario", "Sex", "Pulse", "Ancestry", "Value"])
-    return df_new
+# file_path = './data_inputs/output_salvador.txt'
+file_path = './data_inputs/output-after-filter-genomic-ancestry_salvador.txt'
 
 #plots histograms for each pulse, separated by sex
+#ancestries param should be a list with the ancestries' names, eg. ancestries = ["EUR", "AFR", "NAT", "HYB"]
 def plot_histograms(df, ancestries, type, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
@@ -84,7 +28,7 @@ def plot_histograms(df, ancestries, type, percentage, lines, savefile):
 
     df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
-    graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
+    graph = sns.FacetGrid(df_hist, col="Sex", row="Pulse", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
     
     if lines == True:
@@ -111,6 +55,9 @@ def plot_histograms(df, ancestries, type, percentage, lines, savefile):
     plt.xlim([0, 1])
     graph.savefig(savefile)
 
+#plots the line graph and saves
+#ancestries param should be a list with the ancestries' names, eg. ancestries = ["EUR", "AFR", "NAT", "HYB"]
+#if lines=True, the graph will show mode and quantiles for the percentage
 def plot_lines(df, ancestries, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
@@ -123,7 +70,7 @@ def plot_lines(df, ancestries, percentage, lines, savefile):
 
     df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
-    graph = sns.FacetGrid(df_hist, col="Pulse", row="Sex", hue="Ancestry", palette=colours)
+    graph = sns.FacetGrid(df_hist, col="Sex", row="Pulse", hue="Ancestry", palette=colours)
     graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, linewidth=0, kde=True, stat='probability'))
 
     if lines == True:
@@ -156,10 +103,76 @@ def plot_lines(df, ancestries, percentage, lines, savefile):
         legend.append(mlines.Line2D([], [], color=colours[anc], marker='s', ls='', label=ancestries[anc]))
     graph.figure.legend(handles=legend, loc=7, title="Ancestry", frameon=False)
     graph.figure.tight_layout()
-    graph.figure.subplots_adjust(right=0.935)
+    graph.figure.subplots_adjust(right=0.9)
     
     graph.savefig(savefile)
 
+
+def plot_points__with_errorbars(df, ancestries, percentage, lines, savefile):
+    sexes = ("Female", "Male")
+    colours = list()
+
+    for anc in ancestries:
+        if anc == "EUR": colours.append("red")
+        elif anc == "AFR": colours.append("deepskyblue")
+        elif anc == "NAT": colours.append("green")
+        elif anc == "HYB": colours.append("darkviolet")
+
+    figure, axis = plt.subplots(1, NUMBER_PULSES)
+    figure.set_figwidth(8 + 4*len(ancestries))
+    figure.set_figheight(4)
+    
+    #setting ticks and their lables
+    ticks = list()
+    labels = list()
+    
+    for anc in range(0,len(ancestries)):
+        ticks.append((1/(len(ancestries)+1))*(anc+1))
+        labels.append(ancestries[anc])
+
+    df_plot = df
+    for pulse in range(1,(NUMBER_PULSES+1)):
+        for anc in range(0,len(ancestries)):
+            for sex in range(0,2):
+                #selecting only the values from this pulse, sex and ancestry
+                df_temp = df_plot[(df_plot["Pulse"] == pulse) & (df_plot["Sex"] == sexes[sex]) & (df_plot["Ancestry"] == ancestries[anc])]
+                
+                #calculating values
+                min_temp = df_temp["Value"].min()
+                max_temp = df_temp["Value"].max()
+                mean_temp = df_temp["Value"].mean()
+
+                #plotting point
+                buffer = 0.25 - 0.05 * len(ancestries)
+                point_x = (-buffer/2 + ((1/(len(ancestries)+1))*(anc+1))) + buffer*sex
+                axis[pulse-1].plot(point_x, mean_temp, marker='o', markersize=6, color=colours[anc])
+
+                #plotting min and max lines
+                lines_x = [point_x - (0.015 * 4/(len(ancestries))), point_x + (0.015 * 4/(len(ancestries)))]
+                axis[pulse-1].plot(lines_x, [min_temp, min_temp], linewidth=1.2, color=colours[anc], alpha=1)
+                axis[pulse-1].plot(lines_x, [max_temp, max_temp], linewidth=1.2, color=colours[anc], alpha=1)
+                
+                #connecting line
+                axis[pulse-1].plot([point_x, point_x], [min_temp, max_temp], linewidth=1, linestyle='--', color=colours[anc], alpha=0.9)
+
+        #setting axis limits, ticks and title
+        axis[pulse-1].set_xlim(0, 1)
+        axis[pulse-1].set_ylim(0, 1)
+        axis[pulse-1].set_xticks(ticks, labels)
+        axis[pulse-1].set_title("Pulse {}".format(pulse))
+
+    #drawing the legend for each ancestry
+    legend = list()
+    for anc in range (0, len(ancestries)):
+        legend.append(mlines.Line2D([], [], color=colours[anc], marker='o', ls='', label=ancestries[anc]))
+    figure.legend(handles=legend, loc=7, title="Ancestry", frameon=False)
+    figure.tight_layout(pad=2)
+    figure.subplots_adjust(right=0.925)
+    
+    figure.savefig(savefile)
+
+#filters data by the Highest Density Region, informed by the percentage
+#90% region -> percentage = 90
 def filter(percentage, df_unfiltered):
     ancestries = ("EUR", "AFR", "NAT", "HYB")
     sexes = ("Female", "Male")
@@ -167,8 +180,8 @@ def filter(percentage, df_unfiltered):
     df_filtered = df_unfiltered
 
     for sex in range(0,2):
-        for pulse in range(1,6):
-            for anc in range(0,4):
+        for pulse in range(1,(NUMBER_PULSES+1)):
+            for anc in range(0,NUMBER_ANCESTRY):
                 #selecting only the values from this pulse, sex and ancestry
                 df_temp = df_filtered[(df_filtered["Pulse"] == pulse) & (df_filtered["Sex"] == sexes[sex]) & (df_filtered["Ancestry"] == ancestries[anc])]
                 
@@ -215,6 +228,7 @@ def find_mode(df):
 
     return round(mode, 2)
 
+#writes data's statistics in a csv file
 def write_stats(df, file_name):
     ancestries = ("EUR", "AFR", "NAT", "HYB")
     sexes = ("Female", "Male")
@@ -295,43 +309,52 @@ with open(file_path, 'r') as csvfile:
         first_column_scenario=True
     else: first_column_scenario=False
 
-#reading the files containing scenarios for population
-df = pd.read_csv(file_path, delimiter=delimiter, header=None, skiprows=skip_row)
+#assigning ancestry to a string to be passed as a parameter to the c++ script
+ancestries_string = str()
+for anc in ANCESTRY_NAMES:
+    ancestries_string += anc
+    ancestries_string += ','
+ancestries_string = ancestries_string[:-1]
 
-#treating the raw data and creating the new dataframe
-df_new = populate_dataframe(df, first_column_scenario)
-del df
+#running c++ script
+command = "./script_c {} {} {} {} {} {}".format(file_path, NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string, int(skip_row), int(first_column_scenario))
+os.system('{}'.format(command))
+
+#reading the files containing scenarios for population
+col_names=["Scenario", "Sex", "Pulse", "Ancestry", "Value"]
+df = pd.read_csv("./input_data2.csv", delimiter=' ', header=None, names=col_names)
 
 create_directories()
 
-ancestries = ["EUR", "AFR", "NAT", "HYB"]
-plot_histograms(df_new, ancestries, "layer", 90, False, "./NO_HDR/Standard/histogram.png")
-plot_lines(df_new, ancestries, 90, False, "./NO_HDR/Standard/line_graph.png")
+ancestries = ["EUR"]
+plot_histograms(df, ancestries, "layer", 90, False, "./NO_HDR/Standard/histogram.png")
+plot_lines(df, ancestries, 90, False, "./NO_HDR/Standard/line_graph.png")
+plot_points__with_errorbars(df, ancestries, 90, False, "./NO_HDR/Standard/point_graph.png")
 
-ancestries = ["EUR", "AFR", "NAT"]
-plot_histograms(df_new, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+# ancestries = ["EUR", "AFR", "NAT"]
+# plot_histograms(df, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
+# plot_lines(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
 
-ancestries = ["HYB",]
-plot_histograms(df_new, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+# ancestries = ["HYB",]
+# plot_histograms(df, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
+# plot_lines(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
-write_stats(df_new, "./stats_NO_HDR.csv")
+# write_stats(df, "./stats_NO_HDR.csv")
 
 #filtering for only 90% of density
-df_new = filter(90, df_new)
+# df_filtered = filter(90, df)
 
-ancestries = ["EUR", "AFR", "NAT", "HYB"]
+# ancestries = ["EUR", "AFR", "NAT", "HYB"]
 
-plot_histograms(df_new, ancestries, "layer", 90, False, "./HDR/Standard/histogram.png")
-plot_lines(df_new, ancestries, 90, False, "./HDR/Standard/line_graph.png")
+# plot_histograms(df_filtered, ancestries, "layer", 90, False, "./HDR/Standard/histogram.png")
+# plot_lines(df_filtered, ancestries, 90, False, "./HDR/Standard/line_graph.png")
 
-ancestries = ["EUR", "AFR", "NAT"]
-plot_histograms(df_new, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
-plot_lines(df_new, ancestries, 90, False, "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+# ancestries = ["EUR", "AFR", "NAT"]
+# plot_histograms(df_filtered, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
+# plot_lines(df_filtered, ancestries, 90, False, "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
 
-ancestries = ["HYB",]
-plot_histograms(df_new, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
-plot_lines(df_new, ancestries, 90, False, "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+# ancestries = ["HYB",]
+# plot_histograms(df_filtered, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
+# plot_lines(df_filtered, ancestries, 90, False, "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
 
-write_stats(df_new, "./stats_HDR.csv")
+# write_stats(df_filtered, "./stats_HDR.csv")
