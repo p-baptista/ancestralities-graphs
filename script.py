@@ -3,6 +3,7 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+from matplotlib import colors
 import csv
 import os
 
@@ -10,6 +11,11 @@ import os
 NUMBER_PULSES = 5
 NUMBER_ANCESTRY = 4
 ANCESTRY_NAMES = ["EUR", "AFR", "NAT", "HYB"]
+
+#colours should be written as the name in here: https://matplotlib.org/stable/gallery/color/named_colors.html
+#order must be the same
+#if rgba values are to be passed, remove "colors.to_rgba("colour_name")" and pass the rgba value
+ANCESTRY_COLOURS = [colors.to_rgba("red"), colors.to_rgba("deepskyblue"), colors.to_rgba("green"), colors.to_rgba("darkviolet")]
 
 # file_path = './data_inputs/output_salvador.txt'
 file_path = './data_inputs/output-after-filter-genomic-ancestry_salvador.txt'
@@ -20,11 +26,9 @@ def plot_histograms(df, ancestries, type, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
-    for anc in ancestries:
-        if anc == "EUR": colours.append("red")
-        elif anc == "AFR": colours.append("deepskyblue")
-        elif anc == "NAT": colours.append("green")
-        elif anc == "HYB": colours.append("darkviolet")
+    for anc in range(0,len(ancestries)):
+        if ancestries[anc] in ANCESTRY_NAMES:
+            colours.append(ANCESTRY_COLOURS[anc])
 
     df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
@@ -62,11 +66,9 @@ def plot_lines(df, ancestries, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
-    for anc in ancestries:
-        if anc == "EUR": colours.append("red")
-        elif anc == "AFR": colours.append("deepskyblue")
-        elif anc == "NAT": colours.append("green")
-        elif anc == "HYB": colours.append("darkviolet")
+    for anc in range(0,len(ancestries)):
+        if ancestries[anc] in ANCESTRY_NAMES:
+            colours.append(ANCESTRY_COLOURS[anc])
 
     df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
@@ -112,11 +114,9 @@ def plot_points__with_errorbars(df, ancestries, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
-    for anc in ancestries:
-        if anc == "EUR": colours.append("red")
-        elif anc == "AFR": colours.append("deepskyblue")
-        elif anc == "NAT": colours.append("green")
-        elif anc == "HYB": colours.append("darkviolet")
+    for anc in range(0,len(ancestries)):
+        if ancestries[anc] in ANCESTRY_NAMES:
+            colours.append(ANCESTRY_COLOURS[anc])
 
     figure, axis = plt.subplots(1, NUMBER_PULSES)
     figure.set_figwidth(8 + 4*len(ancestries))
@@ -142,18 +142,23 @@ def plot_points__with_errorbars(df, ancestries, percentage, lines, savefile):
                 max_temp = df_temp["Value"].max()
                 mean_temp = df_temp["Value"].mean()
 
+                #darkening the colour if gender is male
+                colour = [0.0, 0.0, 0.0, 1.0]
+                for i in range(0, len(colour)-1):
+                    colour[i] = max(0, (colours[anc][i] - 0.25*sex))
+
                 #plotting point
                 buffer = 0.25 - 0.05 * len(ancestries)
                 point_x = (-buffer/2 + ((1/(len(ancestries)+1))*(anc+1))) + buffer*sex
-                axis[pulse-1].plot(point_x, mean_temp, marker='o', markersize=6, color=colours[anc])
+                axis[pulse-1].plot(point_x, mean_temp, marker='o', markersize=6, color=colour)
 
                 #plotting min and max lines
                 lines_x = [point_x - (0.015 * 4/(len(ancestries))), point_x + (0.015 * 4/(len(ancestries)))]
-                axis[pulse-1].plot(lines_x, [min_temp, min_temp], linewidth=1.2, color=colours[anc], alpha=1)
-                axis[pulse-1].plot(lines_x, [max_temp, max_temp], linewidth=1.2, color=colours[anc], alpha=1)
+                axis[pulse-1].plot(lines_x, [min_temp, min_temp], linewidth=1.2, color=colour, alpha=1)
+                axis[pulse-1].plot(lines_x, [max_temp, max_temp], linewidth=1.2, color=colour, alpha=1)
                 
                 #connecting line
-                axis[pulse-1].plot([point_x, point_x], [min_temp, max_temp], linewidth=1, linestyle='--', color=colours[anc], alpha=0.9)
+                axis[pulse-1].plot([point_x, point_x], [min_temp, max_temp], linewidth=1, linestyle='--', color=colour, alpha=0.9)
 
         #setting axis limits, ticks and title
         axis[pulse-1].set_xlim(0, 1)
@@ -250,8 +255,7 @@ def write_stats(df, file_name):
                         writer.writerow(row)
 
 #function creates folders for graphs, if they don't exist yet                    
-def create_directories():
-    
+def create_directories():   
     directory = "HDR"
     parent_directory = "./"
     path = os.path.join(parent_directory, directory)
@@ -309,6 +313,8 @@ with open(file_path, 'r') as csvfile:
         first_column_scenario=True
     else: first_column_scenario=False
 
+
+
 #assigning ancestry to a string to be passed as a parameter to the c++ script
 ancestries_string = str()
 for anc in ANCESTRY_NAMES:
@@ -326,35 +332,39 @@ df = pd.read_csv("./input_data2.csv", delimiter=' ', header=None, names=col_name
 
 create_directories()
 
-ancestries = ["EUR"]
+ancestries = ["EUR", "AFR", "NAT", "HYB"]
 plot_histograms(df, ancestries, "layer", 90, False, "./NO_HDR/Standard/histogram.png")
 plot_lines(df, ancestries, 90, False, "./NO_HDR/Standard/line_graph.png")
 plot_points__with_errorbars(df, ancestries, 90, False, "./NO_HDR/Standard/point_graph.png")
 
-# ancestries = ["EUR", "AFR", "NAT"]
-# plot_histograms(df, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
-# plot_lines(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+ancestries = ["EUR", "AFR", "NAT"]
+plot_histograms(df, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_histogram.png")
+plot_lines(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+plot_points__with_errorbars(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_point_graph.png")
 
-# ancestries = ["HYB",]
-# plot_histograms(df, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
-# plot_lines(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+ancestries = ["HYB",]
+plot_histograms(df, ancestries, "layer", 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_histogram.png")
+plot_lines(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+plot_points__with_errorbars(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_point_graph.png")
 
-# write_stats(df, "./stats_NO_HDR.csv")
+write_stats(df, "./stats_NO_HDR.csv")
 
 #filtering for only 90% of density
-# df_filtered = filter(90, df)
+df_filtered = filter(90, df)
 
-# ancestries = ["EUR", "AFR", "NAT", "HYB"]
+ancestries = ["EUR", "AFR", "NAT", "HYB"]
+plot_histograms(df, ancestries, "layer", 90, False, "./HDR/Standard/histogram.png")
+plot_lines(df, ancestries, 90, False, "./HDR/Standard/line_graph.png")
+plot_points__with_errorbars(df, ancestries, 90, False, "./HDR/Standard/point_graph.png")
 
-# plot_histograms(df_filtered, ancestries, "layer", 90, False, "./HDR/Standard/histogram.png")
-# plot_lines(df_filtered, ancestries, 90, False, "./HDR/Standard/line_graph.png")
+ancestries = ["EUR", "AFR", "NAT"]
+plot_histograms(df, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
+plot_lines(df, ancestries, 90, False, "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+plot_points__with_errorbars(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/no_hybrid_point_graph.png")
 
-# ancestries = ["EUR", "AFR", "NAT"]
-# plot_histograms(df_filtered, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/no_hybrid_histogram.png")
-# plot_lines(df_filtered, ancestries, 90, False, "./HDR/Hybrid_Separated/no_hybrid_line_graph.png")
+ancestries = ["HYB",]
+plot_histograms(df, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
+plot_lines(df, ancestries, 90, False, "./NO_HDR/Hybrid_Separated/only_hybrid_line_graph.png")
+plot_points__with_errorbars(df, ancestries, 90, False, "./HDR/Hybrid_Separated/only_hybrid_point_graph.png")
 
-# ancestries = ["HYB",]
-# plot_histograms(df_filtered, ancestries, "layer", 90, False, "./HDR/Hybrid_Separated/only_hybrid_histogram.png")
-# plot_lines(df_filtered, ancestries, 90, False, "./HDR/Hybrid_Separated/only_hybrid_line_graph.png")
-
-# write_stats(df_filtered, "./stats_HDR.csv")
+write_stats(df_filtered, "./stats_HDR.csv")
