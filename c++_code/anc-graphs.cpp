@@ -6,7 +6,6 @@
 #include <math.h>
 
 int main(int argc, char* argv[]) {
-
     //argument format: [input file path], [number of ancestries], [number of pulses], [ancestry list (separated by comma)], [skip first row], [first column scenario]
     //e.g.: ./data_outputs/output_salvador.txt 5 4 EUR,AFR,NAT,HYB, 0, 0
 
@@ -40,7 +39,6 @@ int main(int argc, char* argv[]) {
     sexes.push_back("Female");
     sexes.push_back("Male");
 
-
     std::string input_line;
 
     if(skip_first_row) {
@@ -48,7 +46,6 @@ int main(int argc, char* argv[]) {
         input_line.clear();
     }
     
-
     if(first_col_scenario) {
         while (input_file >> input_line) {
             int scenario = std::stoi(input_line);
@@ -64,7 +61,6 @@ int main(int argc, char* argv[]) {
         }
     }
     else {
-        std::cout << "standard scenario" << std::endl;
         int anc_it=0;
 
         while (input_file >> input_line) {
@@ -78,7 +74,6 @@ int main(int argc, char* argv[]) {
 
             anc_it++;
         }
-        std::cout << anc_it << std::endl;
     }
 
     

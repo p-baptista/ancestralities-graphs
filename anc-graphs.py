@@ -7,14 +7,15 @@ from matplotlib import colors
 import csv
 import os
 from configparser import ConfigParser
+import argparse
 
 #setting basic parameters from config file
 config = ConfigParser()
 config.read('./config.ini')
 
 #basic config
-NUMBER_PULSES = config.get('Basic Configuration', 'N_PULSES')
-NUMBER_ANCESTRY = config.get('Basic Configuration', 'N_ANCESTRIES')
+NUMBER_PULSES = int(config.get('Basic Configuration', 'N_PULSES'))
+NUMBER_ANCESTRY = int(config.get('Basic Configuration', 'N_ANCESTRIES'))
 ANCESTRY_NAMES = config.get('Basic Configuration', 'ANCESTRIES')
 ANCESTRY_NAMES = ANCESTRY_NAMES.split(',')
 
@@ -29,15 +30,19 @@ temp_colours = config.get('Graph Configuration', 'ANCESTRIES_COLOURS')
 temp_colours = temp_colours.split(',')
 for col in temp_colours:
     ANCESTRIES_COLOURS.append(colors.to_rgba(col))
+
 SELECT_ANCESTRIES = config.get('Graph Configuration', 'SELECT_ANCESTRIES')
+# removing comma if added to last element
+if SELECT_ANCESTRIES[-1] == ',': SELECT_ANCESTRIES = SELECT_ANCESTRIES[:-1]
 SELECT_ANCESTRIES = SELECT_ANCESTRIES.split(',')
 
-#colours should be written as the name in here: https://matplotlib.org/stable/gallery/color/named_colors.html
-#order must be the same
-#if rgba values are to be passed, remove "colors.to_rgba("colour_name")" and pass the rgba value
+# getting file path from command line
+parser = argparse.ArgumentParser()
+parser.add_argument('-f', '--file', type=str, required=True)
+args = parser.parse_args()
+FILE_PATH = args.file
 
-# file_path = './data_inputs/output_salvador.txt'
-file_path = './data_inputs/output-after-filter-genomic-ancestry_salvador.txt'
+# ///defining functions///
 
 #plots histograms for each pulse, separated by sex
 #ancestries param should be a list with the ancestries' names, eg. ancestries = ["EUR", "AFR", "NAT", "HYB"]
@@ -45,9 +50,11 @@ def plot_histograms(df, ancestries, type, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
-    for anc in range(0,len(ANCESTRY_NAMES)):
-        if ANCESTRY_NAMES[anc] in ancestries:
-            colours.append(ANCESTRIES_COLOURS[anc])
+    for anc1 in range(0, len(ancestries)):
+        for anc2 in range(0, len(ANCESTRY_NAMES)):
+            if ancestries[anc1] == ANCESTRY_NAMES[anc2]:
+                colours.append(ANCESTRIES_COLOURS[anc2])
+                break
 
     df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
@@ -85,9 +92,11 @@ def plot_lines(df, ancestries, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
-    for anc in range(0,len(ANCESTRY_NAMES)):
-        if ANCESTRY_NAMES[anc] in ancestries:
-            colours.append(ANCESTRIES_COLOURS[anc])
+    for anc1 in range(0, len(ancestries)):
+        for anc2 in range(0, len(ANCESTRY_NAMES)):
+            if ancestries[anc1] == ANCESTRY_NAMES[anc2]:
+                colours.append(ANCESTRIES_COLOURS[anc2])
+                break
 
     df_hist = df[(df["Ancestry"].isin(ancestries)) & (df["Value"] != 0)]
 
@@ -132,9 +141,11 @@ def plot_points__with_errorbars(df, ancestries, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
-    for anc in range(0,len(ANCESTRY_NAMES)):
-        if ANCESTRY_NAMES[anc] in ancestries:
-            colours.append(ANCESTRIES_COLOURS[anc])
+    for anc1 in range(0, len(ancestries)):
+        for anc2 in range(0, len(ANCESTRY_NAMES)):
+            if ancestries[anc1] == ANCESTRY_NAMES[anc2]:
+                colours.append(ANCESTRIES_COLOURS[anc2])
+                break
 
     figure, axis = plt.subplots(1, NUMBER_PULSES)
     figure.set_figwidth(8 + 4*len(ancestries))
@@ -191,6 +202,8 @@ def plot_points__with_errorbars(df, ancestries, percentage, lines, savefile):
     figure.legend(handles=legend, loc=7, title="Ancestry", frameon=False)
     figure.tight_layout(pad=2)
     figure.subplots_adjust(right=0.925)
+    axis[0].set_ylabel("Ancestry Percentage")
+    
     
     figure.savefig(savefile)
 
@@ -198,9 +211,11 @@ def plot_points__by_ancestry(df, ancestries, percentage, lines, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
-    for anc in range(0,len(ANCESTRY_NAMES)):
-        if ANCESTRY_NAMES[anc] in ancestries:
-            colours.append(ANCESTRIES_COLOURS[anc])
+    for anc1 in range(0, len(ancestries)):
+        for anc2 in range(0, len(ANCESTRY_NAMES)):
+            if ancestries[anc1] == ANCESTRY_NAMES[anc2]:
+                colours.append(ANCESTRIES_COLOURS[anc2])
+                break
 
     figure, axis = plt.subplots(1, NUMBER_ANCESTRY)
     figure.set_figwidth(8 + 4*len(ancestries))
@@ -251,7 +266,7 @@ def plot_points__by_ancestry(df, ancestries, percentage, lines, savefile):
         axis[anc].set_title(ancestries[anc])
 
     figure.tight_layout(pad=2)
-    
+    axis[0].set_ylabel("Ancestry Percentage")
     figure.savefig(savefile)
 
 #filters data by the Highest Density Region, informed by the percentage
@@ -275,7 +290,7 @@ def filter(percentage, df_unfiltered):
                 size = df_temp.shape[0]
                 #avoiding the null stats (HYB percentages in the first pulse)
                 if lower_quantile != 0:
-                    #searches for the scenarios that are outside the 90% HDR
+                    #searches for the scenarios that are outside the HDR
                     for i in range(size):
                         #if the value is outside the quantiles, we add to the set of scenarios which will be filtered out
                         if ((df_temp.iloc[i][4] < lower_quantile) or (df_temp.iloc[i][4] > upper_quantile)):
@@ -290,7 +305,7 @@ def find_mode(df):
     if df.empty:
         return 0
     
-    #calculating number of bins using IQR
+    #calculating number of bins using Freedman-Diaconis rule
     Q1 = np.quantile(df["Value"], 0.25)
     Q3 = np.quantile(df["Value"], 0.75)
     IQR = Q3 - Q1
@@ -309,7 +324,7 @@ def find_mode(df):
             count_max = hist[0][i]
             mode = (hist[1][i] + hist[1][i+1])/2
 
-    return round(mode, 2)
+    return round(mode, 3)
 
 #writes data's statistics in a csv file
 def write_stats(df, file_name):
@@ -327,13 +342,14 @@ def write_stats(df, file_name):
                     for k in range (0, 4):
                         df_temp = df.loc[(df["Pulse"] == j) & (df["Sex"] == sexes[i])]
                         anc = df_temp.loc[(df_temp["Ancestry"] == ancestries[k])]
-                        # print(f'Pulse', j, sexes[i], ancestries[k])
 
                         row = [sexes[i], j, ancestries[k], anc["Value"].min(), anc["Value"].mean(), anc["Value"].median(), anc["Value"].max(), find_mode(anc), anc["Value"].std()]
                         writer.writerow(row)
 
+# ///end of function definitions///
+
 #identifying the delimiter, if there are rows to skip and if the first column shows the row's scenario
-with open(file_path, 'r') as csvfile:
+with open(FILE_PATH, 'r') as csvfile:
     first_line = csvfile.readline()
     second_line = csvfile.readline()
     dialect = csv.Sniffer().sniff(csvfile.readline())
@@ -349,7 +365,7 @@ with open(file_path, 'r') as csvfile:
     except ValueError:
         skip_row=1
     except:
-        print("opa2")
+        print("ERROR READING FILE")
 
     if (float(second_element) == int(float(second_element))) and (float(second_element) != 0):
         first_column_scenario=True
@@ -370,7 +386,7 @@ ancestries_string = ancestries_string[:-1]
 os.system('g++ ./c++_code/anc-graphs.cpp -o ./c++_code/anc-graphs')
 
 #running c++ code
-command = "./c++_code/anc-graphs {} {} {} {} {} {}".format(file_path, NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string, int(skip_row), int(first_column_scenario))
+command = "./c++_code/anc-graphs {} {} {} {} {} {}".format(FILE_PATH, NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string, int(skip_row), int(first_column_scenario))
 os.system('{}'.format(command))
 
 #reading the files containing scenarios for population
