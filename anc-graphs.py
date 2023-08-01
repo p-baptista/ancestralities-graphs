@@ -393,7 +393,7 @@ os.system('{}'.format(command))
 col_names=["Scenario", "Sex", "Pulse", "Ancestry", "Value"]
 df = pd.read_csv("./c++_code/input_data.csv", delimiter=' ', header=None, names=col_names)
 
-#applying HDR filter
+#applying HDR filter 
 if(FILTER == 1): df = filter(HDR, df)
 
 match GRAPH_TYPE:
