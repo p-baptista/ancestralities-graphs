@@ -138,7 +138,7 @@ def plot_lines(df, ancestries, percentage, lines, savefile):
     
     graph.savefig(savefile)
 
-def plot_points__with_errorbars(df, ancestries, percentage, lines, savefile):
+def plot_points__with_errorbars(df, ancestries, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
@@ -208,7 +208,7 @@ def plot_points__with_errorbars(df, ancestries, percentage, lines, savefile):
     
     figure.savefig(savefile)
 
-def plot_points__by_ancestry(df, ancestries, percentage, lines, savefile):
+def plot_points__by_ancestry(df, ancestries, savefile):
     sexes = ("Female", "Male")
     colours = list()
 
@@ -409,9 +409,9 @@ match GRAPH_TYPE:
     case 'lines':
         plot_lines(df, SELECT_ANCESTRIES, HDR, False, "./Graphs/line_graph.png")
     case 'min-max-pulse':
-        plot_points__with_errorbars(df, SELECT_ANCESTRIES, HDR, False, "./Graphs/point_graph.png")
+        plot_points__with_errorbars(df, SELECT_ANCESTRIES, "./Graphs/point_graph.png")
     case 'min-max-ancestry':
-        plot_points__by_ancestry(df, SELECT_ANCESTRIES, HDR, False, "./Graphs/point_graph_ancestry.png")
+        plot_points__by_ancestry(df, SELECT_ANCESTRIES, "./Graphs/point_graph_ancestry.png")
     case _:
         print("[ERROR] Error in graph type selection. Check config.ini file.")
         sys.exit()
