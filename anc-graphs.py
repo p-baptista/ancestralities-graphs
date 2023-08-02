@@ -8,6 +8,7 @@ import csv
 import os
 from configparser import ConfigParser
 import argparse
+import sys
 
 #setting basic parameters from config file
 config = ConfigParser()
@@ -20,8 +21,8 @@ ANCESTRY_NAMES = config.get('Basic Configuration', 'ANCESTRIES')
 ANCESTRY_NAMES = ANCESTRY_NAMES.split(',')
 
 #filter config
-FILTER = config.get('Filter Configuration', 'FILTER')
-HDR = config.get('Filter Configuration', 'HDR')
+FILTER = int(config.get('Filter Configuration', 'FILTER'))
+HDR = float(config.get('Filter Configuration', 'HDR'))
 
 #graph config
 GRAPH_TYPE = config.get('Graph Configuration', 'GRAPH')
@@ -389,9 +390,15 @@ os.system('g++ ./c++_code/anc-graphs.cpp -o ./c++_code/anc-graphs')
 command = "./c++_code/anc-graphs {} {} {} {} {} {}".format(FILE_PATH, NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string, int(skip_row), int(first_column_scenario))
 os.system('{}'.format(command))
 
+# cleaning c++ code binary
+os.remove("./c++_code/anc-graphs")
+
 #reading the files containing scenarios for population
 col_names=["Scenario", "Sex", "Pulse", "Ancestry", "Value"]
 df = pd.read_csv("./c++_code/input_data.csv", delimiter=' ', header=None, names=col_names)
+
+# cleaning input csv
+os.remove("./c++_code/input_data.csv")
 
 #applying HDR filter 
 if(FILTER == 1): df = filter(HDR, df)
@@ -405,5 +412,8 @@ match GRAPH_TYPE:
         plot_points__with_errorbars(df, SELECT_ANCESTRIES, HDR, False, "./Graphs/point_graph.png")
     case 'min-max-ancestry':
         plot_points__by_ancestry(df, SELECT_ANCESTRIES, HDR, False, "./Graphs/point_graph_ancestry.png")
+    case _:
+        print("[ERROR] Error in graph type selection. Check config.ini file.")
+        sys.exit()
 
 write_stats(df, "./stats.csv")
