@@ -30,8 +30,8 @@ class MathTools:
                             #searches for the scenarios that are outside the HDR
                             for i in range(size):
                                 #if the value is outside the quantiles, we add to the set of scenarios which will be filtered out
-                                if ((df_temp.iloc[i][4] < lower_quantile) or (df_temp.iloc[i][4] > upper_quantile)):
-                                    scenarios.add(df_temp.iloc[i][0])
+                                if ((df_temp.iloc[i].iloc[-1] < lower_quantile) or (df_temp.iloc[i].iloc[-1] > upper_quantile)):
+                                    scenarios.add(df_temp.iloc[i].iloc[0])
             #applies the HDR filter
             df_filtered = df_filtered[~df_filtered["Scenario"].isin(scenarios)]
             return df_filtered
@@ -54,8 +54,8 @@ class MathTools:
                         #searches for the scenarios that are outside the HDR
                         for i in range(size):
                             #if the value is outside the quantiles, we add to the set of scenarios which will be filtered out
-                            if ((df_temp.iloc[i][4] < lower_quantile) or (df_temp.iloc[i][4] > upper_quantile)):
-                                scenarios.add(df_temp.iloc[i][0])
+                            if ((df_temp.iloc[i].iloc[-1] < lower_quantile) or (df_temp.iloc[i].iloc[-1] > upper_quantile)):
+                                scenarios.add(df_temp.iloc[i].iloc[0])
             #applies the HDR filter
             df_filtered = df_filtered[~df_filtered["Scenario"].isin(scenarios)]
             return df_filtered

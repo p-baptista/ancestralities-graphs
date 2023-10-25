@@ -24,7 +24,7 @@ FILTER=                  Filters the distribution by the Highest Density Region 
 HDR=                     Percentage of HDR filter (value from 0 to 100)
 
 [Graph Configuration]
-GRAPH=                   Graph type (without quotes): 'bars', 'lines', 'min-max-pulse' or 'min-max-ancestry'
+GRAPH=                   Graph type (without quotes): 'bars', 'lines', 'point-pulse' or 'point-ancestry'
 ANCESTRIES_COLOURS=      Names of the ancestries' colours, taken from https://matplotlib.org/stable/gallery/color/named_colors.html
                          The order of the colours should be the same as the ancestries in ANCESTRIES parameter
 SELECT_ANCESTRIES=       Names of all ancestries to be plotted in the graphs (at least one should be passed)
@@ -35,7 +35,7 @@ SELECT_ANCESTRIES=       Names of all ancestries to be plotted in the graphs (at
 Graph of ancestry percentage in the population by the probability of said percentage. Separated by pulses and sex.
 ### Line Graph
 Graph containing same information as the bar graph. Instead of bars, shows a distribution line.
-### Min-Max Point Graph
+### Point Graph
 Graph that shows the average, minimum and maximum values of each ancestry. The values are separated by sex, which is indicated by the difference in colors of the points and bars: the female-related are slightly lighter while the male-related are slightly darker. The graph can be organized either by pulse or by ancestry.
 ## Statistics
 The code generates a .csv file containing the following statistics for each combination of sex, pulse and ancestry:

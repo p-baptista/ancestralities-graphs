@@ -1,13 +1,11 @@
-import pandas as pd
 from matplotlib import colors
-import csv
-import os
 from configparser import ConfigParser
 import argparse
-import sys
 
 from tools.math_tools import MathTools
 from tools.plot_tools import PlotTools
+from tools.code_integrity import CodeIntegrity
+from tools.input_reader import InputReader
 
 #setting basic parameters from config file
 config = ConfigParser()
@@ -44,35 +42,14 @@ args = parser.parse_args()
 FILE_PATH = args.file
 
 math_tools = MathTools(SEXUAL_BIAS, NUMBER_PULSES, ANCESTRY_NAMES)
-
 plot_tools = PlotTools(SEXUAL_BIAS, NUMBER_PULSES, ANCESTRY_NAMES, ANCESTRIES_COLOURS)
 
-#identifying the delimiter, if there are rows to skip and if the first column shows the row's scenario
-with open(FILE_PATH, 'r') as csvfile:
-    first_line = csvfile.readline()
-    second_line = csvfile.readline()
-    dialect = csv.Sniffer().sniff(csvfile.readline())
-    delimiter = dialect.delimiter
+try: CodeIntegrity.check_tools_folder()
+except Exception as error:
+    print(f"[UNEXPECTED ERROR] {error}")
+    exit()
 
-    first_element = first_line.split(delimiter, 1)[0]
-    
-    second_element = second_line.split(delimiter, 1)[0]
-
-    try: 
-        float(first_element)
-        skip_row=0
-    except ValueError:
-        skip_row=1
-    except:
-        print("ERROR READING FILE")
-
-    if (float(second_element) == int(float(second_element))) and (float(second_element) != 0):
-        first_column_scenario=True
-    else: first_column_scenario=False
-
-#creating directory for graphs
-if not os.path.exists("./Graphs"):
-        os.mkdir("./Graphs")
+CodeIntegrity.check_output_folders()
 
 #assigning ancestry to a string to be passed as a parameter to the c++ script
 ancestries_string = str()
@@ -81,37 +58,24 @@ for anc in ANCESTRY_NAMES:
     ancestries_string += ','
 ancestries_string = ancestries_string[:-1]
 
-#compiling c++ code
-os.system('g++ ./c++_code/anc-graphs.cpp -o ./c++_code/anc-graphs')
+input_reader = InputReader(FILE_PATH, NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string, SEXUAL_BIAS)
 
-#running c++ code
-command = "./c++_code/anc-graphs {} {} {} {} {} {}".format(FILE_PATH, NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string, int(skip_row), int(first_column_scenario))
-os.system('{}'.format(command))
-
-# cleaning c++ code binary
-os.remove("./c++_code/anc-graphs")
-
-#reading the files containing scenarios for population
-col_names=["Scenario", "Sex", "Pulse", "Ancestry", "Value"]
-df = pd.read_csv("./c++_code/input_data.csv", delimiter=' ', header=None, names=col_names)
-
-# cleaning input csv
-os.remove("./c++_code/input_data.csv")
+df = input_reader.read_input()
 
 #applying HDR filter 
 if(FILTER == 1): df = math_tools.filter(HDR, df)
 
 match GRAPH_TYPE:
     case 'bars':
-        plot_tools.plot_histograms(df, SELECT_ANCESTRIES, "layer", "./Graphs/histogram.png")
+        plot_tools.plot_histograms(df, SELECT_ANCESTRIES, "layer", "./Outputs/Graphs/histogram.png")
     case 'lines':
-        plot_tools.plot_lines(df, SELECT_ANCESTRIES, "./Graphs/line_graph.png")
-    case 'min-max-pulse':
-        plot_tools.plot_points__with_errorbars(df, SELECT_ANCESTRIES, "./Graphs/point_graph.png")
-    case 'min-max-ancestry':
-        plot_tools.plot_points__by_ancestry(df, SELECT_ANCESTRIES, "./Graphs/point_graph_ancestry.png")
+        plot_tools.plot_lines(df, SELECT_ANCESTRIES, "./Outputs/Graphs/line_graph.png")
+    case 'point-pulse':
+        plot_tools.plot_points__with_errorbars(df, SELECT_ANCESTRIES, "./Outputs/Graphs/point_graph_pulse.png")
+    case 'point-ancestry':
+        plot_tools.plot_points__by_ancestry(df, SELECT_ANCESTRIES, "./Outputs/Graphs/point_graph_ancestry.png")
     case _:
         print("[ERROR] Error in graph type selection. Check config.ini file.")
-        sys.exit()
+        exit()
 
-math_tools.write_stats(df, "./stats.csv")
+math_tools.write_stats(df, "./Outputs/Statistics/stats.csv")
