@@ -26,7 +26,7 @@ class PlotTools:
         df_hist = df[(df["Ancestry"].isin(selected_ancestries)) & (df["Value"] != 0)]
 
         if self.sexual_bias: graph = sns.FacetGrid(df_hist, col="Sex", row="Pulse", hue="Ancestry", palette=colours)
-        else: graph = sns.FacetGrid(df_hist, col="Sex", row="Pulse", hue="Ancestry", palette=colours)
+        else: graph = sns.FacetGrid(df_hist, col="Pulse", hue="Ancestry", palette=colours)
 
         graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
         plt.xlim([0, 1])
@@ -47,7 +47,7 @@ class PlotTools:
         df_hist = df[(df["Ancestry"].isin(selected_ancestries)) & (df["Value"] != 0)]
 
         if self.sexual_bias: graph = sns.FacetGrid(df_hist, col="Sex", row="Pulse", hue="Ancestry", palette=colours)
-        else: graph = sns.FacetGrid(df_hist, col="Sex", row="Pulse", hue="Ancestry", palette=colours)
+        else: graph = sns.FacetGrid(df_hist, col= "Pulse", hue="Ancestry", palette=colours)
 
         graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, linewidth=0, kde=True, stat='probability'))
 
