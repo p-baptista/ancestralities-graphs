@@ -74,6 +74,8 @@ match GRAPH_TYPE:
         plot_tools.plot_points__with_errorbars(df, SELECT_ANCESTRIES, "./Outputs/Graphs/point_graph_pulse.png")
     case 'point-ancestry':
         plot_tools.plot_points__by_ancestry(df, SELECT_ANCESTRIES, "./Outputs/Graphs/point_graph_ancestry.png")
+    case 'priori_posteriori':
+        plot_tools.priori_posteriori(df, math_tools.filter(HDR, df), SELECT_ANCESTRIES, "./Outputs/Graphs/weird.png")
     case _:
         print("[ERROR] Error in graph type selection. Check config.ini file.")
         exit()
