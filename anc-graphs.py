@@ -1,6 +1,7 @@
 from matplotlib import colors
 from configparser import ConfigParser
 import argparse
+import datetime
 
 from tools.math_tools import MathTools
 from tools.plot_tools import PlotTools
@@ -14,11 +15,10 @@ config.read('./config.ini')
 #basic config
 NUMBER_PULSES = int(config.get('Basic Configuration', 'N_PULSES'))
 NUMBER_ANCESTRY = int(config.get('Basic Configuration', 'N_ANCESTRIES'))
-ANCESTRY_NAMES = config.get('Basic Configuration', 'ANCESTRIES')
-ANCESTRY_NAMES = ANCESTRY_NAMES.split(',')
-ANCESTRY_NAMES_POSTERIORI = config.get('Basic Configuration', 'ANCESTRIES_POSTERIORI')
-ANCESTRY_NAMES_POSTERIORI = ANCESTRY_NAMES_POSTERIORI.split(',')
+ANCESTRY_NAMES = (config.get('Basic Configuration', 'ANCESTRIES')).split(',')
+ANCESTRY_NAMES_POSTERIORI = (config.get('Basic Configuration', 'ANCESTRIES_POSTERIORI')).split(',')
 SEXUAL_BIAS = int(config.get('Basic Configuration', 'SEXUAL_BIAS'))
+OUTPUT_PATH =  f"./Outputs/{(str(datetime.datetime.now().isoformat()))[:-7]}/" # removing micro seconds
 
 #filter config
 FILTER = int(config.get('Filter Configuration', 'FILTER'))
@@ -53,7 +53,7 @@ except Exception as error:
     print(f"[UNEXPECTED ERROR] {error}")
     exit()
 
-CodeIntegrity.check_output_folders()
+CodeIntegrity.check_output_folders(OUTPUT_PATH)
 
 #assigning ancestry to a string to be passed as a parameter to the c++ script
 ancestries_string = str()
@@ -79,20 +79,20 @@ if GRAPH_TYPE == "priori_posteriori":
 
 match GRAPH_TYPE:
     case 'bars':
-        plot_tools.plot_histograms(df, SELECT_ANCESTRIES, "layer", "./Outputs/Graphs/histogram.png")
+        plot_tools.plot_histograms(df, SELECT_ANCESTRIES, "layer", f"{OUTPUT_PATH}histogram.png")
     case 'lines':
-        plot_tools.plot_lines(df, SELECT_ANCESTRIES, "./Outputs/Graphs/line_graph.png")
+        plot_tools.plot_lines(df, SELECT_ANCESTRIES, f"{OUTPUT_PATH}line_graph.png")
     case 'point-pulse':
-        plot_tools.plot_points_with_errorbars(df, SELECT_ANCESTRIES, "./Outputs/Graphs/point_graph_pulse.png")
+        plot_tools.plot_points_with_errorbars(df, SELECT_ANCESTRIES, f"{OUTPUT_PATH}point_graph_pulse.png")
     case 'point-ancestry':
-        plot_tools.plot_points_by_ancestry(df, SELECT_ANCESTRIES, "./Outputs/Graphs/point_graph_ancestry.png")
+        plot_tools.plot_points_by_ancestry(df, SELECT_ANCESTRIES, f"{OUTPUT_PATH}point_graph_ancestry.png")
     case 'priori_posteriori':
-        plot_tools.priori_posteriori(df, df_posteriori, SELECT_ANCESTRIES, "./Outputs/Graphs/priori_posteriori.png", True, percentage=HDR)
+        plot_tools.priori_posteriori(df, df_posteriori, SELECT_ANCESTRIES, f"{OUTPUT_PATH}priori_posteriori.png")
     case _:
         print("[ERROR] Error in graph type selection. Check config.ini file.")
         exit()
 
 if GRAPH_TYPE == "priori_posteriori":
-    math_tools.write_stats(df, "./Outputs/Statistics/stats_priori.csv")
-    math_tools.write_stats(df_posteriori, "./Outputs/Statistics/stats_posteriori.csv")
-else: math_tools.write_stats(df, "./Outputs/Statistics/stats.csv")
+    math_tools.write_stats(df, f"{OUTPUT_PATH}stats_priori.csv")
+    math_tools.write_stats(df_posteriori, f"{OUTPUT_PATH}stats_posteriori.csv")
+else: math_tools.write_stats(df, f"{OUTPUT_PATH}stats.csv")

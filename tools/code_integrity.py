@@ -5,16 +5,13 @@ class CodeIntegrity:
         pass
 
     @classmethod
-    def check_output_folders(self):
+    def check_output_folders(self, output_path):
         #creating directory for outputs
         if not os.path.exists("./Outputs"):
             os.mkdir("./Outputs")
-        #creating directory for graphs
-        if not os.path.exists("./Outputs/Graphs"):
-            os.mkdir("./Outputs/Graphs")
-        #creating directory for graphs
-        if not os.path.exists("./Outputs/Statistics"):
-            os.mkdir("./Outputs/Statistics")
+
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
     
     @classmethod
     def check_tools_folder(self):
