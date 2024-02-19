@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import numpy as np
 import seaborn as sns
 import pandas as pd
 
@@ -12,6 +13,17 @@ class PlotTools:
         self.ancestry_names = ancestry_names
         self.ancestry_colours = ancestry_colours
         self.math_tools = MathTools(sexual_bias, n_pulses, ancestry_names)
+
+    def plot_HPD_lines(self, df, axis, percentage, color):
+        lower_quantile = np.percentile(df["Value"], ((100-percentage)/2), method="closest_observation")
+        upper_quantile = np.percentile(df["Value"], (100-((100-percentage)/2)), method="closest_observation")
+
+        #quantile bounds lines
+        axis.axvline(x=lower_quantile, color=color, linestyle='--', linewidth=0.8)
+        axis.axvline(x=upper_quantile, color=color, linestyle='--', linewidth=0.8)
+        
+        #mode line
+        axis.axvline(x=self.math_tools.find_mode(df), color="black", linestyle=':', linewidth=1.2)
         
     #plots histograms for each pulse, separated by sex
     #ancestries param should be a list with the ancestries' names, eg. ancestries = ["EUR", "AFR", "NAT", "HYB"]
@@ -30,12 +42,9 @@ class PlotTools:
         else: graph = sns.FacetGrid(df_hist, col="Pulse", hue="Ancestry", palette=colours)
 
         graph = (graph.map_dataframe(sns.histplot, x="Value", multiple=type, stat='probability').add_legend())
-        plt.xlim([0, 1])
+        plt.xlim([-0.2, 1])
         graph.savefig(savefile)
 
-    #plots the line graph and saves
-    #ancestries param should be a list with the ancestries' names, eg. ancestries = ["EUR", "AFR", "NAT", "HYB"]
-    #if lines=True, the graph will show mode and quantiles for the percentage
     def plot_lines(self, df, selected_ancestries, savefile):
         colours = list()
 
@@ -52,7 +61,7 @@ class PlotTools:
 
         graph = (graph.map_dataframe(sns.histplot, x="Value", fill=False, linewidth=0, kde=True, stat='probability'))
 
-        plt.xlim([0, 1])
+        plt.xlim([-0.2, 1])
         
         #drawing the legend for each ancestry
         legend = list()
@@ -64,7 +73,7 @@ class PlotTools:
         
         graph.savefig(savefile)
 
-    def plot_points__by_ancestry(self, df, selected_ancestries, savefile):
+    def plot_points_by_ancestry(self, df, selected_ancestries, savefile):
         colours = list()
 
         for anc1 in range(0, len(selected_ancestries)):
@@ -138,7 +147,7 @@ class PlotTools:
                     axis[anc].plot([point_x, point_x], [min_temp, max_temp], linewidth=1, linestyle='--', color=colours[anc], alpha=0.9)
 
             #setting axis limits, ticks and title
-            axis[anc].set_xlim(0, 1)
+            axis[anc].set_xlim(-0.2, 1)
             axis[anc].set_ylim(0, 1)
             axis[anc].set_xticks(ticks, labels)
             axis[anc].set_title(selected_ancestries[anc])
@@ -148,8 +157,7 @@ class PlotTools:
         figure.savefig(savefile)
 
 
-    def plot_points__with_errorbars(self, df, selected_ancestries, savefile):
-        sexes = ("Female", "Male")
+    def plot_points_with_errorbars(self, df, selected_ancestries, savefile):
         colours = list()
 
         for anc1 in range(0, len(selected_ancestries)):
@@ -167,13 +175,14 @@ class PlotTools:
         labels = list()
         
         for anc in range(0,len(selected_ancestries)):
-            ticks.append((1/(len(selected_ancestries)+1))*(anc+1))
+            ticks.append((1/(len(selected_ancestries)+2))*(anc+1))
             labels.append(selected_ancestries[anc])
 
         df_plot = df
         for pulse in range(1,(self.n_pulses+1)):
             for anc in range(0,len(selected_ancestries)):
                 if self.sexual_bias:
+                    sexes = ("Female", "Male")
                     for sex in range(0,2):
                         #selecting only the values from this pulse, sex and ancestry
                         df_temp = df_plot[(df_plot["Pulse"] == pulse) & (df_plot["Sex"] == sexes[sex]) & (df_plot["Ancestry"] == selected_ancestries[anc])]
@@ -210,7 +219,7 @@ class PlotTools:
                     mean_temp = df_temp["Value"].mean()
 
                     #plotting point
-                    point_x = ((1/(len(selected_ancestries)+1))*(anc+1))
+                    point_x = ((1/(len(selected_ancestries)+2))*(anc+1))
                     axis[pulse-1].plot(point_x, mean_temp, marker='o', markersize=6, color=colours[anc])
 
                     #plotting min and max lines
@@ -222,7 +231,7 @@ class PlotTools:
                     axis[pulse-1].plot([point_x, point_x], [min_temp, max_temp], linewidth=1, linestyle='--', color=colours[anc], alpha=0.9)
 
             #setting axis limits, ticks and title
-            axis[pulse-1].set_xlim(0, 1)
+            axis[pulse-1].set_xlim(-0.2, 1)
             axis[pulse-1].set_ylim(0, 1)
             axis[pulse-1].set_xticks(ticks, labels)
             axis[pulse-1].set_title("Pulse {}".format(pulse))
@@ -236,10 +245,9 @@ class PlotTools:
         figure.subplots_adjust(right=0.925)
         axis[0].set_ylabel("Ancestry Percentage")
         
-        
         figure.savefig(savefile)
 
-    def priori_posteriori(self, df, df_filtered, selected_ancestries, savefile):
+    def priori_posteriori(self, df_priori, df_posteriori, selected_ancestries, savefile):
         colours = list()
 
         for anc1 in range(0, len(selected_ancestries)):
@@ -248,8 +256,8 @@ class PlotTools:
                     colours.append(self.ancestry_colours[anc2])
                     break
         
-        df_hist = df[(df["Ancestry"].isin(selected_ancestries)) & (df["Value"] != 0)]
-        df_hist_filtered = df_filtered[(df_filtered["Ancestry"].isin(selected_ancestries)) & (df_filtered["Value"] != 0)]
+        df_priori_filtered = df_priori[(df_priori["Ancestry"].isin(selected_ancestries)) & (df_priori["Value"] != 0)]
+        df_posteriori_filtered = df_posteriori[(df_posteriori["Ancestry"].isin(selected_ancestries)) & (df_posteriori["Value"] != 0)]
 
         figure, axis = plt.subplots(self.n_pulses, len(selected_ancestries))
 
@@ -258,18 +266,18 @@ class PlotTools:
         for anc in range(0, len(selected_ancestries)):
             for pulse in range(0, self.n_pulses):
                 axis[pulse][anc].set_title(f"{selected_ancestries[anc]} Pulse {pulse+1}")
-                df_hist_temp = df_hist[(df_hist["Pulse"] == pulse+1) & (df_hist["Ancestry"] == selected_ancestries[anc])]
-                df_filtered_temp = df_hist_filtered[(df_hist_filtered["Pulse"] == pulse+1) & (df_hist_filtered["Ancestry"] == selected_ancestries[anc])]
-                sns.histplot(x="Value", data=df_hist_temp, fill=False, linewidth=0, kde=True, stat='density', ax=axis[pulse][anc], color=colours[anc])
-                sns.histplot(x="Value", data=df_filtered_temp, fill=False, linewidth=0, kde=True, stat='density', ax=axis[pulse][anc], color=colours[anc], line_kws={"linestyle": "--"})
-                axis[pulse][anc].set_xlim(0, 1)
-        
+                df_priori_temp = df_priori_filtered[(df_priori_filtered["Pulse"] == pulse+1) & (df_priori_filtered["Ancestry"] == selected_ancestries[anc])]
+                df_posteriori_temp = df_posteriori_filtered[(df_posteriori_filtered["Pulse"] == pulse+1) & (df_posteriori_filtered["Ancestry"] == selected_ancestries[anc])]
+                sns.kdeplot(x="Value", data=df_priori_temp, ax=axis[pulse][anc], color=colours[anc], linestyle="--")
+                sns.kdeplot(x="Value", data=df_posteriori_temp, ax=axis[pulse][anc], color=colours[anc], linestyle="-")
+
+                axis[pulse][anc].set_xlim(-0.2, 1)
 
         legend = list()
-        legend.append(mlines.Line2D([], [], color=colours[anc], marker='_', ls='', label="NO HDR"))
-        legend.append(mlines.Line2D([], [], color=colours[anc], marker='--', ls='', label="HDR"))
-        figure.legend(handles=legend, loc=7, title="Ancestry", frameon=False)
+        legend.append(mlines.Line2D([], [], color="black", ls='--', label="Priori"))
+        legend.append(mlines.Line2D([], [], color="black", ls='-', label="Posteriori"))
+        figure.legend(handles=legend, loc=7, frameon=False)
 
         figure.tight_layout(pad=1)
-        figure.subplots_adjust(right=0.925)
+        figure.subplots_adjust(right=0.85)
         figure.savefig(savefile)

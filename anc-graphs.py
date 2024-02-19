@@ -1,6 +1,7 @@
 from matplotlib import colors
 from configparser import ConfigParser
 import argparse
+import datetime
 
 from tools.math_tools import MathTools
 from tools.plot_tools import PlotTools
@@ -14,9 +15,10 @@ config.read('./config.ini')
 #basic config
 NUMBER_PULSES = int(config.get('Basic Configuration', 'N_PULSES'))
 NUMBER_ANCESTRY = int(config.get('Basic Configuration', 'N_ANCESTRIES'))
-ANCESTRY_NAMES = config.get('Basic Configuration', 'ANCESTRIES')
-ANCESTRY_NAMES = ANCESTRY_NAMES.split(',')
+ANCESTRY_NAMES = (config.get('Basic Configuration', 'ANCESTRIES')).split(',')
+ANCESTRY_NAMES_POSTERIORI = (config.get('Basic Configuration', 'ANCESTRIES_POSTERIORI')).split(',')
 SEXUAL_BIAS = int(config.get('Basic Configuration', 'SEXUAL_BIAS'))
+OUTPUT_PATH =  f"./Outputs/{(str(datetime.datetime.now().isoformat()))[:-7]}/" # removing micro seconds
 
 #filter config
 FILTER = int(config.get('Filter Configuration', 'FILTER'))
@@ -29,17 +31,19 @@ temp_colours = config.get('Graph Configuration', 'ANCESTRIES_COLOURS')
 temp_colours = temp_colours.split(',')
 for col in temp_colours:
     ANCESTRIES_COLOURS.append(colors.to_rgba(col))
-
 SELECT_ANCESTRIES = config.get('Graph Configuration', 'SELECT_ANCESTRIES')
-# removing comma if added to last element
 if SELECT_ANCESTRIES[-1] == ',': SELECT_ANCESTRIES = SELECT_ANCESTRIES[:-1]
 SELECT_ANCESTRIES = SELECT_ANCESTRIES.split(',')
 
 # getting file path from command line
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--file', type=str, required=True)
+if GRAPH_TYPE == "priori_posteriori":
+    parser.add_argument('-p', '--posteriori', type=str, required=True)
 args = parser.parse_args()
 FILE_PATH = args.file
+if GRAPH_TYPE == "priori_posteriori":
+    POSTERIORI_PATH = args.posteriori
 
 math_tools = MathTools(SEXUAL_BIAS, NUMBER_PULSES, ANCESTRY_NAMES)
 plot_tools = PlotTools(SEXUAL_BIAS, NUMBER_PULSES, ANCESTRY_NAMES, ANCESTRIES_COLOURS)
@@ -49,7 +53,7 @@ except Exception as error:
     print(f"[UNEXPECTED ERROR] {error}")
     exit()
 
-CodeIntegrity.check_output_folders()
+CodeIntegrity.check_output_folders(OUTPUT_PATH)
 
 #assigning ancestry to a string to be passed as a parameter to the c++ script
 ancestries_string = str()
@@ -58,26 +62,37 @@ for anc in ANCESTRY_NAMES:
     ancestries_string += ','
 ancestries_string = ancestries_string[:-1]
 
-input_reader = InputReader(FILE_PATH, NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string, SEXUAL_BIAS)
-
-df = input_reader.read_input()
-
-#applying HDR filter 
+input_reader = InputReader(NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string, SEXUAL_BIAS)    
+df = input_reader.read_input(FILE_PATH)
 if(FILTER == 1): df = math_tools.filter(HDR, df)
+
+if GRAPH_TYPE == "priori_posteriori":
+    ancestries_string_posteriori = str()
+    for anc in ANCESTRY_NAMES_POSTERIORI:
+        ancestries_string_posteriori += anc
+        ancestries_string_posteriori += ','
+    ancestries_string_posteriori = ancestries_string_posteriori[:-1]
+    input_reader_posteriori = InputReader(NUMBER_PULSES, NUMBER_ANCESTRY, ancestries_string_posteriori, SEXUAL_BIAS)
+    df_posteriori = input_reader_posteriori.read_input(POSTERIORI_PATH)
+    if(FILTER == 1):
+        df_posteriori = math_tools.filter(HDR, df_posteriori)
 
 match GRAPH_TYPE:
     case 'bars':
-        plot_tools.plot_histograms(df, SELECT_ANCESTRIES, "layer", "./Outputs/Graphs/histogram.png")
+        plot_tools.plot_histograms(df, SELECT_ANCESTRIES, "layer", f"{OUTPUT_PATH}histogram.png")
     case 'lines':
-        plot_tools.plot_lines(df, SELECT_ANCESTRIES, "./Outputs/Graphs/line_graph.png")
+        plot_tools.plot_lines(df, SELECT_ANCESTRIES, f"{OUTPUT_PATH}line_graph.png")
     case 'point-pulse':
-        plot_tools.plot_points__with_errorbars(df, SELECT_ANCESTRIES, "./Outputs/Graphs/point_graph_pulse.png")
+        plot_tools.plot_points_with_errorbars(df, SELECT_ANCESTRIES, f"{OUTPUT_PATH}point_graph_pulse.png")
     case 'point-ancestry':
-        plot_tools.plot_points__by_ancestry(df, SELECT_ANCESTRIES, "./Outputs/Graphs/point_graph_ancestry.png")
+        plot_tools.plot_points_by_ancestry(df, SELECT_ANCESTRIES, f"{OUTPUT_PATH}point_graph_ancestry.png")
     case 'priori_posteriori':
-        plot_tools.priori_posteriori(df, math_tools.filter(HDR, df), SELECT_ANCESTRIES, "./Outputs/Graphs/weird.png")
+        plot_tools.priori_posteriori(df, df_posteriori, SELECT_ANCESTRIES, f"{OUTPUT_PATH}priori_posteriori.png")
     case _:
         print("[ERROR] Error in graph type selection. Check config.ini file.")
         exit()
 
-math_tools.write_stats(df, "./Outputs/Statistics/stats.csv")
+if GRAPH_TYPE == "priori_posteriori":
+    math_tools.write_stats(df, f"{OUTPUT_PATH}stats_priori.csv")
+    math_tools.write_stats(df_posteriori, f"{OUTPUT_PATH}stats_posteriori.csv")
+else: math_tools.write_stats(df, f"{OUTPUT_PATH}stats.csv")

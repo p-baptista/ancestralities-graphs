@@ -24,7 +24,7 @@ FILTER=                  Filters the distribution by the Highest Density Region 
 HDR=                     Percentage of HDR filter (value from 0 to 100)
 
 [Graph Configuration]
-GRAPH=                   Graph type (without quotes): 'bars', 'lines', 'point-pulse' or 'point-ancestry'
+GRAPH=                   Graph type (without quotes): 'bars', 'lines', 'point_graph_pulse', 'point_graph_ancestry', 'priori_posteriori'
 ANCESTRIES_COLOURS=      Names of the ancestries' colours, taken from https://matplotlib.org/stable/gallery/color/named_colors.html
                          The order of the colours should be the same as the ancestries in ANCESTRIES parameter
 SELECT_ANCESTRIES=       Names of all ancestries to be plotted in the graphs (at least one should be passed)

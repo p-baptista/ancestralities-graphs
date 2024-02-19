@@ -43,8 +43,6 @@ int main(int argc, char* argv[]) {
 
     std::string input_line;
 
-    
-
     if(skip_first_row) {
         getline(input_file, input_line);
         input_line.clear();

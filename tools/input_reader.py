@@ -3,17 +3,16 @@ import pandas as pd
 import csv
 
 class InputReader:
-    def __init__(self, file_path: str, number_pulses: int, number_ancestry: int, ancestries_string: str, sex_bias: bool):
-        self.file_path = file_path
+    def __init__(self, number_pulses: int, number_ancestry: int, ancestries_string: str, sex_bias: bool):
         self.number_pulses = number_pulses
         self.number_ancestry = number_ancestry
         self.ancestries_string = ancestries_string
         self.sex_bias = sex_bias
         pass
 
-    def get_file_parameters(self):
+    def get_file_parameters(self, file_path):
         #identifying the delimiter, if there are rows to skip and if the first column shows the row's scenario
-        with open(self.file_path, 'r') as csvfile:
+        with open(file_path, 'r') as csvfile:
             first_line = csvfile.readline()
             second_line = csvfile.readline()
             dialect = csv.Sniffer().sniff(csvfile.readline())
@@ -36,18 +35,18 @@ class InputReader:
     def compile_code(self):
         os.system('g++ ./tools/input_reader.cpp -o ./tools/input_reader')
     
-    def run_code(self):
-        command = "./tools/input_reader {} {} {} {} {} {} {}".format(self.file_path, self.number_pulses, self.number_ancestry, self.ancestries_string, self.skip_row, self.first_column_scenario, self.sex_bias)
+    def run_code(self, file_path):
+        command = "./tools/input_reader {} {} {} {} {} {} {}".format(file_path, self.number_pulses, self.number_ancestry, self.ancestries_string, self.skip_row, self.first_column_scenario, self.sex_bias)
         os.system('{}'.format(command))
 
     def code_cleanup(self):
         os.remove("./tools/input_reader")
         os.remove("./tools/input_data.csv")
 
-    def read_input(self):
-        self.get_file_parameters()
+    def read_input(self, file_path):
+        self.get_file_parameters(file_path)
         self.compile_code()
-        self.run_code()
+        self.run_code(file_path)
         
         if self.sex_bias: col_names=["Scenario", "Sex", "Pulse", "Ancestry", "Value"]
         else: col_names=["Scenario", "Pulse", "Ancestry", "Value"]
